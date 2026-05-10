@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: manhattan_db
+    environment:
+      POSTGRES_USER: manhattan
+      POSTGRES_PASSWORD: manhattan123
+      POSTGRES_DB: manhattan_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - manhattan_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: manhattan_backend
+    environment:
+      DATABASE_URL: postgresql://manhattan:manhattan123@db:5432/manhattan_db
+      JWT_SECRET: manhattan_secret_key_2024
+      PORT: 4000
+      NODE_ENV: production
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: manhattan_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  manhattan_data:

@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Property {
+  id            Int           @id @default(autoincrement())
+  title         String
+  description   String
+  price         Float
+  currency      String        @default("USD")
+  operation     Operation
+  type          PropertyType
+  status        PropertyStatus @default(AVAILABLE)
+  bedrooms      Int?
+  bathrooms     Int?
+  area          Float?
+  garage        Boolean       @default(false)
+  address       String
+  city          String
+  neighborhood  String?
+  lat           Float?
+  lng           Float?
+  featured      Boolean       @default(false)
+  images        PropertyImage[]
+  contacts      Contact[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model PropertyImage {
+  id         Int      @id @default(autoincrement())
+  url        String
+  isPrimary  Boolean  @default(false)
+  order      Int      @default(0)
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String
+  phone      String?
+  message    String
+  propertyId Int?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model SiteSettings {
+  id            Int    @id @default(autoincrement())
+  siteName      String @default("Inmobiliaria Manhattan")
+  phone         String @default("")
+  whatsapp      String @default("")
+  email         String @default("")
+  address       String @default("")
+  instagram     String @default("")
+  facebook      String @default("")
+  googleMapsKey String @default("")
+  logoUrl       String @default("")
+}
+
+enum Operation {
+  SALE
+  RENT
+}
+
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  OFFICE
+  LOCAL
+  LAND
+  PH
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  RENTED
+}
