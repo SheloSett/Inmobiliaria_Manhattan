@@ -59,7 +59,10 @@ exports.update = async (req, res) => {
 exports.uploadImage = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No se recibió ninguna imagen' });
-    res.status(201).json({ url: `/uploads/content/${req.file.filename}` });
+    // res.status(201).json({ url: `/uploads/content/${req.file.filename}` });
+    // ↑ Comentado: ya no se guarda localmente. Con CloudinaryStorage,
+    //   `req.file.path` trae la URL completa de la imagen ya subida.
+    res.status(201).json({ url: req.file.path });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al subir la imagen' });

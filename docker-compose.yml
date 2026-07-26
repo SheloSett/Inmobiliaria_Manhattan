@@ -4,10 +4,18 @@ services:
     container_name: manhattan_db
     environment:
       POSTGRES_USER: manhattan
-      POSTGRES_PASSWORD: manhattan123
+      # POSTGRES_PASSWORD: manhattan123
+      # ↑ Comentado: la contraseña fija era insegura para el VPS. Ahora se lee
+      #   del archivo .env raíz (POSTGRES_PASSWORD); si no existe, usa el mismo
+      #   valor de antes como default para desarrollo local.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manhattan123}
       POSTGRES_DB: manhattan_db
     ports:
-      - "5434:5432"
+      # - "5434:5432"
+      # ↑ Comentado: exponía Postgres a internet en el VPS. Con el prefijo
+      #   127.0.0.1 el puerto solo es accesible desde la propia máquina
+      #   (localmente seguís pudiendo conectarte igual que antes por 5434).
+      - "127.0.0.1:5434:5432"
     volumes:
       - manhattan_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -16,12 +24,25 @@ services:
     build: ./backend
     container_name: manhattan_backend
     environment:
-      DATABASE_URL: postgresql://manhattan:manhattan123@db:5432/manhattan_db
-      JWT_SECRET: manhattan_secret_key_2024
+      # DATABASE_URL: postgresql://manhattan:manhattan123@db:5432/manhattan_db
+      # JWT_SECRET: manhattan_secret_key_2024
+      # ↑ Comentados: los secretos fijos no deben quedar hardcodeados en un
+      #   servidor público. Ahora se leen del .env raíz con los mismos valores
+      #   de antes como default para desarrollo local.
+      DATABASE_URL: postgresql://manhattan:${POSTGRES_PASSWORD:-manhattan123}@db:5432/manhattan_db
+      JWT_SECRET: ${JWT_SECRET:-manhattan_secret_key_2024}
       PORT: 4000
       NODE_ENV: production
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
     ports:
-      - "4000:4000"
+      # - "4000:4000"
+      # ↑ Comentado: el backend no necesita estar expuesto a internet; el nginx
+      #   del frontend le hace proxy por la red interna de Docker. Con 127.0.0.1
+      #   solo queda accesible desde la propia máquina (útil para debug y para
+      #   el proxy de Vite en desarrollo local).
+      - "127.0.0.1:4000:4000"
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
@@ -32,7 +53,11 @@ services:
     build: ./frontend
     container_name: manhattan_frontend
     ports:
-      - "3000:80"
+      # - "3000:80"
+      # ↑ Comentado: el puerto público ahora es configurable. En desarrollo
+      #   local sigue siendo 3000 (default); en el VPS se define
+      #   FRONTEND_PORT=80 en el .env raíz para servir la web en el puerto 80.
+      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
     restart: unless-stopped

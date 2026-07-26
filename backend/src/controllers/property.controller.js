@@ -117,7 +117,11 @@ exports.create = async (req, res) => {
     if (req.files?.length) {
       await prisma.propertyImage.createMany({
         data: req.files.map((f, i) => ({
-          url: `/uploads/properties/${f.filename}`,
+          // url: `/uploads/properties/${f.filename}`,
+          // ↑ Comentado: ya no se guarda localmente. Con CloudinaryStorage,
+          //   `f.path` trae la URL completa (https://res.cloudinary.com/...)
+          //   de la imagen ya subida a la cuenta de Cloudinary.
+          url: f.path,
           isPrimary: i === 0,
           order: i,
           propertyId: property.id,
@@ -177,7 +181,10 @@ exports.update = async (req, res) => {
       const existing = await prisma.propertyImage.count({ where: { propertyId: id } });
       await prisma.propertyImage.createMany({
         data: req.files.map((f, i) => ({
-          url: `/uploads/properties/${f.filename}`,
+          // url: `/uploads/properties/${f.filename}`,
+          // ↑ Comentado: ver explicación en create() más arriba — ahora se usa
+          //   la URL de Cloudinary devuelta en `f.path`.
+          url: f.path,
           isPrimary: existing === 0 && i === 0,
           order: existing + i,
           propertyId: id,
