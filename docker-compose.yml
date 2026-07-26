@@ -38,11 +38,13 @@ services:
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
     ports:
       # - "4000:4000"
-      # ↑ Comentado: el backend no necesita estar expuesto a internet; el nginx
-      #   del frontend le hace proxy por la red interna de Docker. Con 127.0.0.1
-      #   solo queda accesible desde la propia máquina (útil para debug y para
-      #   el proxy de Vite en desarrollo local).
-      - "127.0.0.1:4000:4000"
+      # - "127.0.0.1:4000:4000"
+      # ↑ Comentadas: el backend no necesita estar expuesto a internet; el nginx
+      #   del frontend le hace proxy por la red interna de Docker. Este mapeo a
+      #   127.0.0.1 solo es útil para debug local y para el proxy de Vite en
+      #   desarrollo. El puerto del host ahora es configurable (BACKEND_PORT)
+      #   porque en algunos VPS el 4000 ya está tomado por otra app.
+      - "127.0.0.1:${BACKEND_PORT:-4000}:4000"
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
