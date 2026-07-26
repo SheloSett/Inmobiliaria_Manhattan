@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Edit2, Trash2, X, Upload } from 'lucide-react';
 import api from '../../services/api';
+import { propertyThumbnail } from '../../utils/media';
 
 // --- Constantes del dominio ---
 const PROPERTY_TYPES = [
@@ -449,7 +450,8 @@ export default function AdminProperties() {
   // const handleSaved = () => { setModalProp(null); fetchProperties(); };
 
   const formatPrice  = (p) => `${p.currency || 'USD'} ${Number(p.price).toLocaleString('es-AR')}`;
-  const thumbnailSrc = (p) => p.images?.find(i => i.isPrimary)?.url ?? p.images?.[0]?.url ?? null;
+  // Miniatura: foto principal → primera foto → primer frame del video (si solo hay videos).
+  const thumbnailSrc = (p) => propertyThumbnail(p.images);
 
   return (
     <div className="bg-background min-h-full p-6 md:p-10">

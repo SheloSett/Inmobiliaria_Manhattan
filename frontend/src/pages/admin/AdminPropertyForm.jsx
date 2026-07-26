@@ -81,6 +81,8 @@ export default function AdminPropertyForm() {
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [property, setProperty] = useState(null); // solo en edición: para imágenes actuales
+  // Media existente en su orden actual (reordenable arrastrando). El primero = portada.
+  const [existingMedia, setExistingMedia] = useState([]);
   const [newImages, setNewImages] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [deletedIds, setDeletedIds] = useState([]);
@@ -89,6 +91,9 @@ export default function AdminPropertyForm() {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef();
+  // Índices para el drag & drop de reordenamiento de la media existente.
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
 
   // En modo edición se carga la propiedad y se precarga el formulario
   useEffect(() => {
@@ -116,6 +121,8 @@ export default function AdminPropertyForm() {
         });
         // Precarga los amenities ya marcados en la propiedad.
         setSelectedAmenities((p.amenities || []).map((a) => a.id));
+        // Media existente en el orden guardado (ya viene ordenada por `order` del backend).
+        setExistingMedia(p.images || []);
       })
       .catch(() => {
         toast.error('No se pudo cargar la propiedad');
@@ -146,12 +153,13 @@ export default function AdminPropertyForm() {
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // Suma archivos nuevos (desde el picker o drag & drop) respetando el máximo
+  // Suma archivos nuevos (fotos o videos) desde el picker o drag & drop, respetando
+  // el máximo. Acepta tanto imágenes como videos (antes filtraba solo image/).
   const addFiles = (files) => {
-    const images = Array.from(files).filter(f => f.type.startsWith('image/'));
-    if (!images.length) return;
+    const media = Array.from(files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+    if (!media.length) return;
     setNewImages(prev => {
-      const merged = [...prev, ...images].slice(0, MAX_IMAGES);
+      const merged = [...prev, ...media].slice(0, MAX_IMAGES);
       setPreviews(merged.map(f => URL.createObjectURL(f)));
       return merged;
     });
@@ -167,6 +175,22 @@ export default function AdminPropertyForm() {
 
   const toggleDeleteImage = (imgId) =>
     setDeletedIds(prev => prev.includes(imgId) ? prev.filter(x => x !== imgId) : [...prev, imgId]);
+
+  // Reordena la media existente al soltar (drag & drop). Mueve el ítem arrastrado a la
+  // posición sobre la que se soltó; el que quede primero será la portada al guardar.
+  const handleReorderDrop = () => {
+    const from = dragItem.current;
+    const to = dragOverItem.current;
+    dragItem.current = null;
+    dragOverItem.current = null;
+    if (from === null || to === null || from === to) return;
+    setExistingMedia(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -188,6 +212,12 @@ export default function AdminPropertyForm() {
       // Siempre se manda amenityIds (aunque sea []), para que al editar se pueda
       // desmarcar todo y el backend haga el `set` correspondiente.
       fd.append('amenityIds', JSON.stringify(selectedAmenities));
+      // Orden actual de la media existente NO eliminada (para el reordenamiento por drag).
+      // El backend usa este orden y toma la primera foto como portada.
+      if (isEdit) {
+        const orderIds = existingMedia.filter(m => !deletedIds.includes(m.id)).map(m => m.id);
+        fd.append('imageOrder', JSON.stringify(orderIds));
+      }
 
       const cfg = { headers: { 'Content-Type': 'multipart/form-data' } };
       if (isEdit) {
@@ -349,74 +379,111 @@ export default function AdminPropertyForm() {
               }`}
             >
               <CloudUpload size={40} className="text-outline mb-4 group-hover:text-primary transition-colors" />
-              <p className="font-label-md text-label-md text-primary text-center">Arrastra y suelta tus fotos aquí</p>
+              <p className="font-label-md text-label-md text-primary text-center">Arrastra y suelta tus fotos o videos aquí</p>
               <p className="font-label-sm text-label-sm text-on-surface-variant text-center mt-2">
-                o haz clic para explorar tus archivos (Máx {MAX_IMAGES} fotos, formato JPG/PNG)
+                o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · fotos JPG/PNG/WebP · videos MP4/MOV/WebM hasta 100 MB)
               </p>
               {newImages.length > 0 && (
                 <p className="font-label-md text-label-md text-secondary mt-3">
-                  {newImages.length} imagen{newImages.length !== 1 ? 'es' : ''} seleccionada{newImages.length !== 1 ? 's' : ''}
+                  {newImages.length} archivo{newImages.length !== 1 ? 's' : ''} seleccionado{newImages.length !== 1 ? 's' : ''}
                 </p>
               )}
             </div>
-            <input ref={fileRef} type="file" multiple accept="image/*" className="hidden"
+            <input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
 
-            {/* Previews de imágenes nuevas, con botón para quitarlas antes de subir */}
+            {/* Previews de media nueva (fotos o videos), con botón para quitarlas antes de subir */}
             {previews.length > 0 && (
               <div className="mt-4 grid grid-cols-3 md:grid-cols-6 gap-3">
-                {previews.map((src, i) => (
-                  <div key={i} className="aspect-square rounded-lg overflow-hidden border border-outline-variant relative group">
-                    <img src={src} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeNewImage(i)}
-                      title="Quitar"
-                      className="absolute top-1 right-1 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs font-bold shadow bg-secondary opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                {previews.map((src, i) => {
+                  const isVideo = newImages[i]?.type?.startsWith('video/');
+                  return (
+                    <div key={i} className="aspect-square rounded-lg overflow-hidden border border-outline-variant relative group bg-surface-container">
+                      {isVideo ? (
+                        <video src={src} className="w-full h-full object-cover" muted />
+                      ) : (
+                        <img src={src} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
+                      )}
+                      {isVideo && (
+                        <span className="material-symbols-outlined absolute inset-0 m-auto w-8 h-8 flex items-center justify-center text-white drop-shadow pointer-events-none">play_circle</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeNewImage(i)}
+                        title="Quitar"
+                        className="absolute top-1 right-1 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs font-bold shadow bg-secondary opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* Imágenes actuales en modo edición — se pueden marcar para eliminar */}
-            {isEdit && property?.images?.length > 0 && (
-              <div className="mt-4">
-                <p className="font-label-sm text-label-sm text-on-surface-variant mb-2">
-                  Imágenes actuales
-                  {deletedIds.length > 0 && (
-                    <span className="ml-2 text-secondary">({deletedIds.length} marcada{deletedIds.length !== 1 ? 's' : ''} para eliminar)</span>
-                  )}:
-                </p>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                  {property.images.map(img => {
-                    const markedForDelete = deletedIds.includes(img.id);
-                    return (
-                      <div
-                        key={img.id}
-                        className={`aspect-square rounded-lg overflow-hidden border relative group transition-all ${
-                          markedForDelete ? 'border-secondary opacity-40' : 'border-outline-variant'
-                        }`}
-                      >
-                        <img src={img.url} alt="Imagen actual" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => toggleDeleteImage(img.id)}
-                          title={markedForDelete ? 'Deshacer' : 'Eliminar'}
-                          className={`absolute top-1 right-1 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs font-bold shadow transition-opacity ${
-                            markedForDelete ? 'bg-outline opacity-100' : 'bg-secondary opacity-0 group-hover:opacity-100'
-                          }`}
+            {/* Media actual en modo edición (fotos y videos). Se pueden reordenar
+                ARRASTRANDO (drag & drop) y marcar para eliminar. La primera foto según
+                el orden es la portada (miniatura en los listados). */}
+            {isEdit && existingMedia.length > 0 && (() => {
+              // Portada = primera foto (no video) que no esté marcada para eliminar.
+              const coverId = existingMedia.find(m => m.type !== 'video' && !deletedIds.includes(m.id))?.id;
+              return (
+                <div className="mt-4">
+                  <p className="font-label-sm text-label-sm text-on-surface-variant mb-2 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">drag_indicator</span>
+                    Fotos y videos actuales — arrastrá para reordenar (la primera foto es la portada)
+                    {deletedIds.length > 0 && (
+                      <span className="ml-1 text-secondary">· {deletedIds.length} marcada{deletedIds.length !== 1 ? 's' : ''} para eliminar</span>
+                    )}
+                  </p>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    {existingMedia.map((img, i) => {
+                      const markedForDelete = deletedIds.includes(img.id);
+                      const isVideo = img.type === 'video';
+                      const isCover = img.id === coverId;
+                      return (
+                        <div
+                          key={img.id}
+                          draggable={!markedForDelete}
+                          onDragStart={() => { dragItem.current = i; }}
+                          onDragEnter={() => { dragOverItem.current = i; }}
+                          onDragEnd={handleReorderDrop}
+                          onDragOver={(e) => e.preventDefault()}
+                          className={`aspect-square rounded-lg overflow-hidden border relative group transition-all bg-surface-container ${
+                            markedForDelete ? 'border-secondary opacity-40' : 'border-outline-variant cursor-move'
+                          } ${isCover ? 'ring-2 ring-primary' : ''}`}
                         >
-                          {markedForDelete ? '↩' : '×'}
-                        </button>
-                      </div>
-                    );
-                  })}
+                          {isVideo ? (
+                            <>
+                              <video src={img.url} className="w-full h-full object-cover pointer-events-none" muted />
+                              <span className="material-symbols-outlined absolute inset-0 m-auto w-8 h-8 flex items-center justify-center text-white drop-shadow pointer-events-none">play_circle</span>
+                            </>
+                          ) : (
+                            <img src={img.url} alt="Media actual" className="w-full h-full object-cover pointer-events-none" />
+                          )}
+                          {/* Badge de portada en la primera foto */}
+                          {isCover && !markedForDelete && (
+                            <span className="absolute bottom-1 left-1 bg-primary text-on-primary text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide pointer-events-none">
+                              Portada
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleDeleteImage(img.id)}
+                            title={markedForDelete ? 'Deshacer' : 'Eliminar'}
+                            className={`absolute top-1 right-1 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs font-bold shadow transition-opacity ${
+                              markedForDelete ? 'bg-outline opacity-100' : 'bg-secondary opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
+                            {markedForDelete ? '↩' : '×'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </FormSection>
 
           {/* ── Amenities ── (antes "Características"; ahora lista los amenities del

@@ -1,5 +1,8 @@
-import { useState, useRef } from 'react';
-import { Eye, EyeOff, Camera } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 // Editor de contenido del sitio (mini-CMS), agregado como segunda pestaña de Ajustes
 // (20/07/2026, template admin_settings_content). Permite editar textos e imágenes de
 // las páginas públicas.
@@ -10,20 +13,42 @@ import AdminContent from './AdminContent';
 // import AdminCatalogs from './AdminCatalogs';
 
 // --- Sección: Perfil de Cuenta ---
+// Reescrita el 26/07/2026: antes era solo maqueta (datos hardcodeados "Juan Pérez
+// Admin", botón sin acción). Ahora carga el admin real y persiste nombre + email vía
+// PUT /api/auth/profile. Se quitó el campo "Cargo / Título" (no lo usa el sitio y el
+// modelo Admin no lo tiene) y el botón "Cambiar Foto" (no persistía; el avatar muestra
+// las iniciales derivadas del nombre real).
 function ProfileSection() {
-  const [form, setForm] = useState({
-    nombre: 'Juan Pérez Admin',
-    cargo: 'Director de Operaciones',
-    email: 'admin@manhattan-realestate.com',
-  });
-  const [avatarPreview, setAvatarPreview] = useState(null);
-  const fileRef = useRef();
+  const { admin, updateAdmin } = useAuth();
+  const [form, setForm] = useState({ name: '', email: '' });
+  const [saving, setSaving] = useState(false);
+
+  // Precarga los datos reales del admin logueado cuando el contexto los tiene.
+  useEffect(() => {
+    if (admin) setForm({ name: admin.name || '', email: admin.email || '' });
+  }, [admin]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) setAvatarPreview(URL.createObjectURL(file));
+  // Iniciales para el avatar (primeras letras de hasta dos palabras del nombre).
+  const initials = (form.name || 'A')
+    .trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('') || 'A';
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.email.trim()) {
+      toast.error('Completá nombre y email');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data } = await api.put('/auth/profile', { name: form.name.trim(), email: form.email.trim() });
+      updateAdmin(data); // refresca el nombre mostrado en el sidebar sin re-loguear
+      toast.success('Perfil actualizado');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'No se pudo actualizar el perfil');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -31,36 +56,18 @@ function ProfileSection() {
       <div className="border-b border-outline-variant pb-4 mb-6">
         <h2 className="font-headline-md text-headline-md text-primary">Perfil de Cuenta</h2>
         <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-          Actualice su información personal y foto de perfil.
+          Actualice su información personal.
         </p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8 items-start">
-        {/* Columna avatar */}
+        {/* Columna avatar (iniciales derivadas del nombre) */}
         <div className="flex flex-col items-center gap-4 w-full md:w-1/4">
-          <div
-            className="w-32 h-32 rounded-full overflow-hidden border-2 border-outline-variant relative group cursor-pointer"
-            onClick={() => fileRef.current.click()}
-          >
-            {avatarPreview ? (
-              <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              // Iniciales del admin como fallback al no tener imagen real
-              <div className="w-full h-full bg-primary-container flex items-center justify-center">
-                <span className="font-headline-md text-headline-md text-on-primary-container text-2xl">JP</span>
-              </div>
-            )}
-            <div className="absolute inset-0 bg-primary/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-              <Camera className="text-white" size={24} />
+          <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-outline-variant">
+            <div className="w-full h-full bg-primary-container flex items-center justify-center">
+              <span className="font-headline-md text-on-primary-container text-3xl">{initials}</span>
             </div>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-          <button
-            onClick={() => fileRef.current.click()}
-            className="font-label-md text-label-md text-primary border border-outline-variant px-4 py-2 rounded hover:bg-surface-container transition-colors w-full text-center"
-          >
-            Cambiar Foto
-          </button>
         </div>
 
         {/* Columna formulario */}
@@ -69,37 +76,31 @@ function ProfileSection() {
             <div className="flex flex-col gap-2">
               <label className="font-label-md text-label-md text-on-surface">Nombre Completo</label>
               <input
-                name="nombre"
+                name="name"
                 type="text"
-                value={form.nombre}
+                value={form.name}
                 onChange={handleChange}
                 className="border border-outline-variant rounded px-4 py-2 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface bg-surface-container-lowest"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="font-label-md text-label-md text-on-surface">Cargo / Título</label>
+              <label className="font-label-md text-label-md text-on-surface">Correo Electrónico</label>
               <input
-                name="cargo"
-                type="text"
-                value={form.cargo}
+                name="email"
+                type="email"
+                value={form.email}
                 onChange={handleChange}
                 className="border border-outline-variant rounded px-4 py-2 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface bg-surface-container-lowest"
               />
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="font-label-md text-label-md text-on-surface">Correo Electrónico Corporativo</label>
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              className="border border-outline-variant rounded px-4 py-2 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface bg-surface-container-lowest"
-            />
-          </div>
           <div className="flex justify-end pt-4">
-            <button className="bg-primary text-on-primary px-6 py-2 rounded font-label-md text-label-md hover:bg-primary-container transition-colors">
-              Guardar Perfil
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-primary text-on-primary px-6 py-2 rounded font-label-md text-label-md hover:bg-primary-container transition-colors disabled:opacity-60"
+            >
+              {saving ? 'Guardando...' : 'Guardar Perfil'}
             </button>
           </div>
         </div>
@@ -189,9 +190,36 @@ function ProfileSection() {
 function SecuritySection() {
   const [fields, setFields] = useState({ actual: '', nueva: '', confirmar: '' });
   const [visible, setVisible] = useState({ actual: false, nueva: false, confirmar: false });
+  const [saving, setSaving] = useState(false);
 
   const handleChange = (e) => setFields({ ...fields, [e.target.name]: e.target.value });
   const toggleVisible = (key) => setVisible({ ...visible, [key]: !visible[key] });
+
+  // Cambia la contraseña vía PUT /api/auth/password (valida la actual en el backend).
+  const handleUpdatePassword = async () => {
+    if (!fields.actual || !fields.nueva || !fields.confirmar) {
+      toast.error('Completá los tres campos');
+      return;
+    }
+    if (fields.nueva.length < 6) {
+      toast.error('La nueva contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (fields.nueva !== fields.confirmar) {
+      toast.error('La nueva contraseña y su confirmación no coinciden');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put('/auth/password', { currentPassword: fields.actual, newPassword: fields.nueva });
+      toast.success('Contraseña actualizada');
+      setFields({ actual: '', nueva: '', confirmar: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'No se pudo cambiar la contraseña');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const passwordField = (label, name) => (
     <div className="flex flex-col gap-2">
@@ -231,8 +259,12 @@ function SecuritySection() {
         {passwordField('Confirmar Nueva Contraseña', 'confirmar')}
         <div className="flex justify-start pt-4">
           {/* Botón rojo (secondary) para acción de riesgo moderado: cambio de contraseña */}
-          <button className="bg-secondary text-on-secondary px-6 py-2 rounded font-label-md text-label-md hover:bg-secondary-container transition-colors">
-            Actualizar Contraseña
+          <button
+            onClick={handleUpdatePassword}
+            disabled={saving}
+            className="bg-secondary text-on-secondary px-6 py-2 rounded font-label-md text-label-md hover:bg-secondary-container transition-colors disabled:opacity-60"
+          >
+            {saving ? 'Actualizando...' : 'Actualizar Contraseña'}
           </button>
         </div>
       </div>

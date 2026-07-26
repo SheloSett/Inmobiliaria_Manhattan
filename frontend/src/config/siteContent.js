@@ -40,6 +40,36 @@ export const PAGES = [
       { key: 'sellBullet3', label: 'Beneficio 3', type: 'text', default: 'Gestión integral hasta la escritura.' },
       { key: 'sellImage', label: 'Imagen sección "Vendemos"', type: 'image', default: HOME_SELL_IMG },
       { key: 'testimonialsTitle', label: 'Título de testimonios', type: 'text', default: 'Lo que dicen nuestros clientes' },
+      // Lista repetible de testimonios (editables/agregables desde el CMS). Cada uno
+      // tiene nombre, una referencia/fecha corta y el texto del testimonio.
+      {
+        key: 'testimonials',
+        label: 'Testimonios',
+        type: 'list',
+        itemLabel: 'Testimonio',
+        itemFields: [
+          { key: 'name', label: 'Nombre del cliente', type: 'text', default: '' },
+          { key: 'date', label: 'Referencia (ej: "Compró en Palermo")', type: 'text', default: '' },
+          { key: 'text', label: 'Testimonio', type: 'textarea', default: '' },
+        ],
+        default: [
+          {
+            name: 'María González',
+            date: 'Compró en Palermo',
+            text: 'Excelente atención de principio a fin. Me acompañaron en cada paso de la compra, siempre con total transparencia. Súper recomendables.',
+          },
+          {
+            name: 'Juan Pérez',
+            date: 'Vendió su departamento',
+            text: 'Vendieron mi propiedad más rápido de lo que esperaba y al precio que buscaba. Un equipo muy profesional y confiable.',
+          },
+          {
+            name: 'Laura Fernández',
+            date: 'Alquiló en Caballito',
+            text: 'Encontré el departamento ideal gracias a su asesoramiento. Trato cálido y humano, se nota que se preocupan por el cliente.',
+          },
+        ],
+      },
     ],
   },
   {

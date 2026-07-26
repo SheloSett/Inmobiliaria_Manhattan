@@ -36,6 +36,19 @@ const NETWORKS = {
   },
 };
 
+// Crédito del desarrollador. HARDCODEADO A PROPÓSITO: son datos del programador, NO
+// deben ser editables desde el panel del admin, por eso no pasan por el CMS/siteContent.
+// Para cambiarlos se edita este objeto y se rebuildea el frontend.
+const DEV_CREDIT = {
+  name: 'SheloSettDev',
+  instagram: 'https://instagram.com/shelosettdev',
+  email: 'shelosettdev@gmail.com',
+  // Número de WhatsApp del dev (solo dígitos, con código de país). Si queda vacío,
+  // el botón de WhatsApp del crédito no se muestra.
+  // 1136557290 (local) → 54 (Argentina) + 9 (celular) + 1136557290.
+  whatsapp: '5491136557290',
+};
+
 export default function PublicFooter() {
   const c = useSiteContent('footer');
   // Filtra redes con enlace válido y que tengan ícono conocido.
@@ -109,6 +122,45 @@ export default function PublicFooter() {
           <span className="font-body-md text-body-md text-on-primary-container opacity-60 text-center md:text-left">
             {c.copyright}
           </span>
+        </div>
+
+        {/* Crédito del desarrollador (hardcodeado, NO editable desde el admin). */}
+        <div className="mt-stack-sm flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-on-primary-container opacity-60">
+          <span className="font-body-md text-body-md">Desarrollado por</span>
+          <a
+            href={DEV_CREDIT.instagram}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 font-label-md text-label-md hover:opacity-100 hover:text-secondary transition-all"
+          >
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d={NETWORKS.instagram.path} />
+            </svg>
+            {DEV_CREDIT.name}
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href={`mailto:${DEV_CREDIT.email}`}
+            className="font-body-md text-body-md hover:opacity-100 hover:text-secondary transition-all"
+          >
+            {DEV_CREDIT.email}
+          </a>
+          {DEV_CREDIT.whatsapp && (
+            <>
+              <span aria-hidden="true">·</span>
+              <a
+                href={`https://wa.me/${DEV_CREDIT.whatsapp}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 font-body-md text-body-md hover:opacity-100 hover:text-secondary transition-all"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d={NETWORKS.whatsapp.path} />
+                </svg>
+                WhatsApp
+              </a>
+            </>
+          )}
         </div>
       </div>
     </footer>

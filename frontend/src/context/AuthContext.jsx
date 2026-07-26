@@ -31,8 +31,12 @@ export function AuthProvider({ children }) {
     setAdmin(null);
   };
 
+  // Refresca en memoria los datos del admin (ej: tras editar el perfil en Ajustes),
+  // así el nombre que se muestra en el sidebar queda actualizado sin volver a loguear.
+  const updateAdmin = (data) => setAdmin(prev => ({ ...prev, ...data }));
+
   return (
-    <AuthContext.Provider value={{ admin, loading, login, logout }}>
+    <AuthContext.Provider value={{ admin, loading, login, logout, updateAdmin }}>
       {children}
     </AuthContext.Provider>
   );

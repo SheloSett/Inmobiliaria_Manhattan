@@ -5,6 +5,7 @@ import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useCatalogs } from '../hooks/useCatalogs';
+import { propertyThumbnail } from '../utils/media';
 // El título y subtítulo del encabezado son editables desde el admin
 // (Ajustes → Contenido → Propiedades). Defaults en config/siteContent.js.
 // Los desplegables de operación/tipo salen del catálogo gestionable (useCatalogs).
@@ -95,7 +96,8 @@ function PropertyCard({ property }) {
   // COMENTADO: estado del botón de favoritos. Se deshabilitó porque no existen
   // usuarios en la base de datos, por lo que no hay dónde persistir los favoritos.
   // const [favored, setFavored] = useState(false);
-  const primaryImg = property.images?.find(i => i.isPrimary)?.url ?? property.images?.[0]?.url ?? null;
+  // Thumbnail: foto principal → primera foto → poster del video (si solo hay videos).
+  const primaryImg = propertyThumbnail(property.images);
   // Prefiere el label enriquecido del backend (catálogo gestionable); fallback al mapa.
   const opLabel = property.operationLabel ?? OPERATION_LABELS[property.operation] ?? property.operation;
   const opStyle = property.operation === 'SALE'

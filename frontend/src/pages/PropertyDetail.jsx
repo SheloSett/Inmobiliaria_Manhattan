@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import ImageCarousel from '../components/ImageCarousel';
 
 const OPERATION_LABELS = { SALE: 'VENTA', RENT: 'ALQUILER' };
 const TYPE_LABELS = {
@@ -309,38 +310,38 @@ export default function PropertyDetail() {
               </div>
             </div>
 
-            {/* Image Gallery – Bento Grid */}
+            {/* Galería de imágenes. Antes era un grid "bento" (main + 2 fotos) que se
+                amontonaba y se rompía con muchas imágenes; se reemplazó por un carrusel
+                con flechas + autoplay cada 5s (26/07/2026). El markup viejo quedó
+                comentado abajo (no eliminado, según regla del proyecto). */}
+            {images.length > 0 ? (
+              <ImageCarousel images={images} alt={property.title} />
+            ) : (
+              <div className="h-[300px] rounded-xl bg-surface-container flex items-center justify-center border border-outline-variant">
+                <div className="flex flex-col items-center gap-3 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[48px]">image_not_supported</span>
+                  <span className="font-body-md text-body-md">Sin imágenes disponibles</span>
+                </div>
+              </div>
+            )}
+            {/* MARKUP VIEJO DE LA GALERÍA (grid "bento"), comentado y no eliminado según
+                la regla del proyecto. Reemplazado por <ImageCarousel/> arriba:
             {images.length > 0 ? (
               <div className={`grid gap-unit h-[400px] md:h-[520px] rounded-xl overflow-hidden ${images.length >= 2 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
-                {/* Main image */}
                 <div className={`h-full relative group cursor-pointer ${images.length >= 2 ? 'md:col-span-2' : ''}`}>
-                  <img
-                    alt={property.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    src={mainImg}
-                  />
+                  <img alt={property.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={mainImg} />
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                 </div>
-
-                {/* Secondary images */}
                 {images.length >= 2 && (
                   <div className="hidden md:flex flex-col gap-unit h-full">
                     {img2 && (
                       <div className="h-1/2 relative group cursor-pointer overflow-hidden">
-                        <img
-                          alt={`${property.title} - foto 2`}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src={img2}
-                        />
+                        <img alt={`${property.title} - foto 2`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={img2} />
                       </div>
                     )}
                     {img3 && (
                       <div className="h-1/2 relative group cursor-pointer overflow-hidden">
-                        <img
-                          alt={`${property.title} - foto 3`}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src={img3}
-                        />
+                        <img alt={`${property.title} - foto 3`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={img3} />
                         {extraCount > 0 && (
                           <div className="absolute bottom-4 right-4 bg-surface/90 backdrop-blur-sm px-4 py-2 rounded flex items-center gap-2 font-label-md text-label-md text-primary shadow-sm">
                             <span className="material-symbols-outlined text-[18px]">photo_library</span>
@@ -352,14 +353,8 @@ export default function PropertyDetail() {
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="h-[300px] rounded-xl bg-surface-container flex items-center justify-center border border-outline-variant">
-                <div className="flex flex-col items-center gap-3 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[48px]">image_not_supported</span>
-                  <span className="font-body-md text-body-md">Sin imágenes disponibles</span>
-                </div>
-              </div>
-            )}
+            ) : null}
+            */}
 
             {/* Quick Specs */}
             <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm">

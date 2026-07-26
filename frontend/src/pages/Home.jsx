@@ -4,6 +4,7 @@ import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useCatalogs } from '../hooks/useCatalogs';
+import { propertyThumbnail } from '../utils/media';
 import api from '../services/api';
 // Los textos e imágenes de esta página ahora son editables desde el admin
 // (Ajustes → Contenido → Inicio). Los valores por defecto —el contenido original
@@ -17,12 +18,22 @@ const OPERATION_LABELS = { SALE: 'Venta', RENT: 'Alquiler' };
 // (GET /properties?featured=true) en el componente Home, ver useEffect más abajo.
 // const properties = [];
 
-// Se llenará con testimonios reales de la API
-const testimonials = [];
+// COMENTADO: los testimonios ya no son un array fijo vacío; ahora se editan/agregan
+// desde el CMS (Ajustes → Contenido → Inicio → Testimonios) y se leen con
+// c.testimonials en el componente. Los valores por defecto viven en siteContent.js.
+// const testimonials = [];
+
+// Estilos de avatar que rotan por índice, para que las iniciales no sean todas iguales.
+const TESTIMONIAL_AVATARS = [
+  { bg: 'bg-primary-container', text: 'text-on-primary-container' },
+  { bg: 'bg-secondary', text: 'text-on-secondary' },
+  { bg: 'bg-tertiary-container', text: 'text-on-tertiary-container' },
+];
 
 // Mapea una propiedad de la API a las props que espera <PropertyCard/>.
 function mapPropertyToCard(property) {
-  const primaryImg = property.images?.find(i => i.isPrimary)?.url ?? property.images?.[0]?.url ?? null;
+  // Foto principal → primera foto → poster del video (si solo hay videos).
+  const primaryImg = propertyThumbnail(property.images);
   const isRent = property.operation === 'RENT';
   return {
     id: property.id,
@@ -258,15 +269,28 @@ export default function Home() {
             <h3 className="font-headline-lg text-headline-lg text-primary font-bold mb-unit">{c.testimonialsTitle}</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-            {testimonials.length === 0 ? (
+            {/* Testimonios desde el CMS (c.testimonials). La inicial del avatar se saca
+                del nombre y el color rota por índice (TESTIMONIAL_AVATARS). */}
+            {(c.testimonials || []).length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
                 <span className="material-symbols-outlined text-[48px] text-outline mb-3">rate_review</span>
                 <p className="font-label-md text-label-md text-on-surface-variant">Aún no hay testimonios publicados.</p>
               </div>
             ) : (
-              testimonials.map((t) => (
-                <TestimonialCard key={t.name} {...t} />
-              ))
+              c.testimonials.map((t, i) => {
+                const avatar = TESTIMONIAL_AVATARS[i % TESTIMONIAL_AVATARS.length];
+                return (
+                  <TestimonialCard
+                    key={`${t.name}-${i}`}
+                    name={t.name}
+                    date={t.date}
+                    text={t.text}
+                    initial={(t.name || '?').trim().charAt(0).toUpperCase()}
+                    avatarBg={avatar.bg}
+                    avatarText={avatar.text}
+                  />
+                );
+              })
             )}
           </div>
         </div>

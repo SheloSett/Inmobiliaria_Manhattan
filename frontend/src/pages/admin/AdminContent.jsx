@@ -262,6 +262,13 @@ export default function AdminContent() {
                                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                       </select>
+                                    ) : sub.type === 'textarea' ? (
+                                      <textarea
+                                        rows={3}
+                                        value={item[sub.key] ?? ''}
+                                        onChange={(e) => setListItem(field.key, index, sub.key, e.target.value)}
+                                        className="w-full border border-outline-variant rounded-lg p-2.5 font-body-md text-body-md text-on-surface bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
+                                      />
                                     ) : (
                                       <input
                                         type="text"

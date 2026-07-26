@@ -34,6 +34,25 @@ function parseAmenityIds(raw) {
   }
 }
 
+// Recalcula la portada (isPrimary) de una propiedad: la primera FOTO según el `order`
+// pasa a ser portada (los videos no sirven de miniatura). Si solo hay videos, ninguna
+// queda como portada. Se llama tras crear/reordenar/eliminar media para dejarla consistente.
+async function recomputePrimary(propertyId) {
+  const imgs = await prisma.propertyImage.findMany({
+    where: { propertyId },
+    orderBy: { order: 'asc' },
+  });
+  const cover = imgs.find((i) => i.type !== 'video');
+  await Promise.all(
+    imgs.map((i) =>
+      prisma.propertyImage.update({
+        where: { id: i.id },
+        data: { isPrimary: cover ? i.id === cover.id : false },
+      })
+    )
+  );
+}
+
 exports.getAll = async (req, res) => {
   try {
     const { operation, type, status, featured, search, page = 1, limit = 12 } = req.query;
@@ -115,14 +134,18 @@ exports.create = async (req, res) => {
     });
 
     if (req.files?.length) {
+      // isPrimary: se marca como principal la primera FOTO (no un video), porque los
+      // listados usan esa imagen como miniatura. Si solo hay videos, ninguna es primary.
+      const firstImageIdx = req.files.findIndex((f) => !f.mimetype.startsWith('video/'));
       await prisma.propertyImage.createMany({
         data: req.files.map((f, i) => ({
           // url: `/uploads/properties/${f.filename}`,
           // ↑ Comentado: ya no se guarda localmente. Con CloudinaryStorage,
           //   `f.path` trae la URL completa (https://res.cloudinary.com/...)
-          //   de la imagen ya subida a la cuenta de Cloudinary.
+          //   del archivo ya subido a la cuenta de Cloudinary.
           url: f.path,
-          isPrimary: i === 0,
+          type: f.mimetype.startsWith('video/') ? 'video' : 'image',
+          isPrimary: i === firstImageIdx,
           order: i,
           propertyId: property.id,
         })),
@@ -146,7 +169,7 @@ exports.update = async (req, res) => {
     const {
       title, description, price, currency, operation, type, status,
       bedrooms, bathrooms, area, garage, address, city, neighborhood,
-      lat, lng, featured, deleteImages, amenityIds,
+      lat, lng, featured, deleteImages, amenityIds, imageOrder,
     } = req.body;
 
     const data = {};
@@ -172,25 +195,45 @@ exports.update = async (req, res) => {
     if (lng !== undefined) data.lng = lng ? parseFloat(lng) : null;
     if (featured !== undefined) data.featured = featured === 'true' || featured === true;
 
+    // 1) Eliminar las marcadas para borrar.
     if (deleteImages) {
       const ids = JSON.parse(deleteImages);
       await prisma.propertyImage.deleteMany({ where: { id: { in: ids } } });
     }
 
+    // 2) Reordenar la media existente según imageOrder (array de ids en el nuevo orden,
+    //    tal como quedó tras arrastrarlas en el admin). El índice pasa a ser el `order`.
+    let orderedIds = [];
+    if (imageOrder) {
+      try { orderedIds = JSON.parse(imageOrder).map(Number).filter((n) => !Number.isNaN(n)); } catch { orderedIds = []; }
+    }
+    if (orderedIds.length) {
+      await Promise.all(
+        orderedIds.map((imgId, idx) =>
+          prisma.propertyImage.update({ where: { id: imgId }, data: { order: idx } }).catch(() => {})
+        )
+      );
+    }
+
+    // 3) Media nueva: se agrega al final (después de las existentes reordenadas).
     if (req.files?.length) {
-      const existing = await prisma.propertyImage.count({ where: { propertyId: id } });
+      const base = orderedIds.length || await prisma.propertyImage.count({ where: { propertyId: id } });
       await prisma.propertyImage.createMany({
         data: req.files.map((f, i) => ({
           // url: `/uploads/properties/${f.filename}`,
           // ↑ Comentado: ver explicación en create() más arriba — ahora se usa
           //   la URL de Cloudinary devuelta en `f.path`.
           url: f.path,
-          isPrimary: existing === 0 && i === 0,
-          order: existing + i,
+          type: f.mimetype.startsWith('video/') ? 'video' : 'image',
+          order: base + i,
           propertyId: id,
+          // isPrimary se recalcula abajo con recomputePrimary (según el orden final).
         })),
       });
     }
+
+    // 4) Recalcular la portada según el orden final (primera foto = portada).
+    await recomputePrimary(id);
 
     const property = await prisma.property.update({
       where: { id },

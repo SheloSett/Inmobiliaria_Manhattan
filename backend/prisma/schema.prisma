@@ -77,6 +77,10 @@ model Amenity {
 model PropertyImage {
   id         Int      @id @default(autoincrement())
   url        String
+  // "image" | "video": distingue fotos de videos (ambos se suben a Cloudinary y se
+  // guardan en esta misma tabla). Default "image" para no romper los registros ya
+  // existentes. La ficha usa esto para renderizar <img> o <video> según corresponda.
+  type       String   @default("image")
   isPrimary  Boolean  @default(false)
   order      Int      @default(0)
   propertyId Int
