@@ -91,7 +91,8 @@ export default function ContactPage() {
       '',
       '*Mis datos de contacto*',
       `👤 Nombre: ${form.name}`,
-      `📧 Email: ${form.email}`,
+      // Email comentado: el input se quitó del formulario (26/07/2026), iría siempre vacío.
+      // `📧 Email: ${form.email}`,
       form.phone && `📞 Teléfono: ${form.phone}`,
     ].filter(Boolean).join('\n');
     window.open(`https://wa.me/${PHONE_SHAUL.wa}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
@@ -124,16 +125,17 @@ export default function ContactPage() {
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
             <h2 className="font-headline-md text-headline-md text-primary mb-stack-sm">{c.formTitle}</h2>
             <form className="space-y-stack-sm" onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-                <div>
-                  <label className="block font-label-md text-label-md text-on-surface mb-2" htmlFor="name">Nombre completo</label>
-                  <input className={INPUT_CLASS} id="name" name="name" placeholder="Ej. Juan Pérez" required type="text" value={form.name} onChange={handleChange} />
-                </div>
-                <div>
-                  <label className="block font-label-md text-label-md text-on-surface mb-2" htmlFor="email">Correo electrónico</label>
-                  <input className={INPUT_CLASS} id="email" name="email" placeholder="tu@email.com" required type="email" value={form.email} onChange={handleChange} />
-                </div>
+              {/* Antes: grid de 2 columnas con Nombre + Correo electrónico. El input de email
+                  se comentó (no eliminado, según regla del proyecto) a pedido del cliente
+                  (26/07/2026); Nombre pasa a ocupar todo el ancho. La consulta va por WhatsApp. */}
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface mb-2" htmlFor="name">Nombre completo</label>
+                <input className={INPUT_CLASS} id="name" name="name" placeholder="Ej. Juan Pérez" required type="text" value={form.name} onChange={handleChange} />
               </div>
+              {/* <div>
+                <label className="block font-label-md text-label-md text-on-surface mb-2" htmlFor="email">Correo electrónico</label>
+                <input className={INPUT_CLASS} id="email" name="email" placeholder="tu@email.com" required type="email" value={form.email} onChange={handleChange} />
+              </div> */}
               <div>
                 <label className="block font-label-md text-label-md text-on-surface mb-2" htmlFor="phone">Teléfono / Celular</label>
                 <input className={INPUT_CLASS} id="phone" name="phone" placeholder="Ej. 11-6047-9977" type="tel" value={form.phone} onChange={handleChange} />

@@ -63,7 +63,7 @@ export default function PublicFooter() {
             {c.email && (
               <a
                 href={`mailto:${c.email}`}
-                className="flex items-center gap-2 font-body-md text-body-md text-on-primary-container opacity-80 hover:opacity-100 hover:text-secondary-fixed transition-all whitespace-nowrap"
+                className="flex items-center gap-2 font-body-md text-body-md text-on-primary-container opacity-80 hover:opacity-100 hover:text-secondary transition-all whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[20px]">mail</span>
                 {c.email}
@@ -102,7 +102,7 @@ export default function PublicFooter() {
               página real, por eso no se hicieron editables. */}
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {['Privacidad', 'Términos', 'Mapa del Sitio', 'Ayuda'].map(label => (
-              <a key={label} className="font-label-md text-label-md text-on-primary-container opacity-80 hover:opacity-100 hover:text-secondary-fixed transition-opacity" href="#">{label}</a>
+              <a key={label} className="font-label-md text-label-md text-on-primary-container opacity-80 hover:opacity-100 hover:text-secondary transition-opacity" href="#">{label}</a>
             ))}
           </nav>
           {/* Antes: copyright "© 2024 Manhattan..." fijo; ahora c.copyright */}

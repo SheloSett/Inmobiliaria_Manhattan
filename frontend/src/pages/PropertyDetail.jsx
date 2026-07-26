@@ -184,8 +184,10 @@ export default function PropertyDetail() {
       '',
       '*Mis datos de contacto*',
       `👤 Nombre: ${formData.name}`,
-      formData.email && `📧 Email: ${formData.email}`,
-      formData.phone && `📞 Teléfono: ${formData.phone}`,
+      // Email y Teléfono comentados: los inputs se quitaron del formulario (26/07/2026),
+      // así que estos campos irían siempre vacíos. formData los conserva por compatibilidad.
+      // formData.email && `📧 Email: ${formData.email}`,
+      // formData.phone && `📞 Teléfono: ${formData.phone}`,
     ].filter(Boolean).join('\n');
     window.open(`https://wa.me/${WHATSAPP_CONSULTAS}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     toast.success('Abriendo WhatsApp con tu consulta...');
@@ -478,6 +480,10 @@ export default function PropertyDetail() {
                       value={formData.name}
                       onChange={handleChange}
                     />
+                    {/* Inputs Email y Teléfono comentados (no eliminados, según regla del
+                        proyecto). Motivo: el cliente pidió quitarlos del formulario de la
+                        propiedad (26/07/2026); la consulta va por WhatsApp, donde el número
+                        del interesado ya queda registrado por el propio chat.
                     <input
                       className="w-full border border-outline-variant rounded px-4 py-3 bg-surface text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors placeholder:text-outline"
                       name="email"
@@ -494,6 +500,7 @@ export default function PropertyDetail() {
                       value={formData.phone}
                       onChange={handleChange}
                     />
+                    */}
                     <textarea
                       className="w-full border border-outline-variant rounded px-4 py-3 bg-surface text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors placeholder:text-outline resize-none"
                       name="message"
