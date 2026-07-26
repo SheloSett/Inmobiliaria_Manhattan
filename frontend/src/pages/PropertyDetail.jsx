@@ -199,6 +199,38 @@ export default function PropertyDetail() {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
+  // Compartir la propiedad: usa el menú nativo del sistema (Web Share API, disponible
+  // sobre todo en mobile); si el navegador no lo soporta, copia el enlace al portapapeles.
+  async function handleShare() {
+    const url = window.location.href;
+    const shareData = {
+      title: property?.title || 'Propiedad — Manhattan',
+      text: property
+        ? `${property.title} — ${formatPrice(property.currency, property.price)}`
+        : 'Mirá esta propiedad en Inmobiliaria Manhattan',
+      url,
+    };
+    const copyLink = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Enlace copiado al portapapeles');
+      } catch {
+        toast.error('No se pudo compartir el enlace');
+      }
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await copyLink();
+      }
+    } catch (err) {
+      // Si el usuario cerró el menú nativo (AbortError), no hacemos nada; ante cualquier
+      // otro error, caemos al fallback de copiar el enlace.
+      if (err?.name !== 'AbortError') await copyLink();
+    }
+  }
+
   // Render ----------------------------------------------------------------
 
   if (!loading && notFound) {
@@ -287,12 +319,17 @@ export default function PropertyDetail() {
 
                 <div className="flex flex-col items-start md:items-end gap-unit">
                   <div className="flex space-x-2 mb-2">
-                    <button className="p-2 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      title="Compartir"
+                      className="p-2 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                    >
                       <span className="material-symbols-outlined">share</span>
                     </button>
-                    <button className="p-2 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low transition-colors">
-                      <span className="material-symbols-outlined">print</span>
-                    </button>
+                    {/* <button className="p-2 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low transition-colors"> */}
+                      {/* <span className="material-symbols-outlined">print</span> */}
+                    {/* </button> */}
                     {/* COMENTADO: botón de favoritos. Se deshabilitó porque no existen
                         usuarios en la base de datos, por lo que el favorito no se guardaría
                         en ningún lado (solo era un estado local que se perdía al recargar). */}
