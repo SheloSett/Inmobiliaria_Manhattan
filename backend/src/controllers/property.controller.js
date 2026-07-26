@@ -2,6 +2,38 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+// Adjunta a cada propiedad las etiquetas legibles de su operación y tipo, buscándolas
+// en los catálogos (operation/type son `value`, ej "SALE"). Así las páginas públicas
+// muestran el label ("Venta") sin tener que resolverlo, y siguen usando el `value`
+// para la lógica (color, "/mes", etc.). Si el value no está en el catálogo (porque se
+// borró), cae al propio value como fallback.
+async function withCatalogLabels(properties) {
+  const [ops, types] = await Promise.all([
+    prisma.operationType.findMany(),
+    prisma.propertyTypeOption.findMany(),
+  ]);
+  const opMap = Object.fromEntries(ops.map((o) => [o.value, o.label]));
+  const typeMap = Object.fromEntries(types.map((t) => [t.value, t.label]));
+  const list = Array.isArray(properties) ? properties : [properties];
+  const enriched = list.map((p) => ({
+    ...p,
+    operationLabel: opMap[p.operation] || p.operation,
+    typeLabel: typeMap[p.type] || p.type,
+  }));
+  return Array.isArray(properties) ? enriched : enriched[0];
+}
+
+// Parsea los ids de amenities que llegan del form (JSON string en multipart, o array).
+function parseAmenityIds(raw) {
+  if (!raw) return [];
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(arr) ? arr.map(Number).filter((n) => !Number.isNaN(n)) : [];
+  } catch {
+    return [];
+  }
+}
+
 exports.getAll = async (req, res) => {
   try {
     const { operation, type, status, featured, search, page = 1, limit = 12 } = req.query;
@@ -19,7 +51,10 @@ exports.getAll = async (req, res) => {
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
         where,
-        include: { images: { orderBy: { order: 'asc' } } },
+        include: {
+          images: { orderBy: { order: 'asc' } },
+          amenities: { orderBy: { order: 'asc' } },
+        },
         orderBy: { createdAt: 'desc' },
         skip: (Number(page) - 1) * Number(limit),
         take: Number(limit),
@@ -27,7 +62,7 @@ exports.getAll = async (req, res) => {
       prisma.property.count({ where }),
     ]);
 
-    res.json({ properties, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+    res.json({ properties: await withCatalogLabels(properties), total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener propiedades' });
   }
@@ -37,10 +72,13 @@ exports.getById = async (req, res) => {
   try {
     const property = await prisma.property.findUnique({
       where: { id: Number(req.params.id) },
-      include: { images: { orderBy: { order: 'asc' } } },
+      include: {
+        images: { orderBy: { order: 'asc' } },
+        amenities: { orderBy: { order: 'asc' } },
+      },
     });
     if (!property) return res.status(404).json({ error: 'Propiedad no encontrada' });
-    res.json(property);
+    res.json(await withCatalogLabels(property));
   } catch {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -51,9 +89,10 @@ exports.create = async (req, res) => {
     const {
       title, description, price, currency, operation, type, status,
       bedrooms, bathrooms, area, garage, address, city, neighborhood,
-      lat, lng, featured,
+      lat, lng, featured, amenityIds,
     } = req.body;
 
+    const ids = parseAmenityIds(amenityIds);
     const property = await prisma.property.create({
       data: {
         title, description,
@@ -71,6 +110,7 @@ exports.create = async (req, res) => {
         lat: lat ? parseFloat(lat) : null,
         lng: lng ? parseFloat(lng) : null,
         featured: featured === 'true' || featured === true,
+        ...(ids.length ? { amenities: { connect: ids.map((id) => ({ id })) } } : {}),
       },
     });
 
@@ -87,9 +127,9 @@ exports.create = async (req, res) => {
 
     const full = await prisma.property.findUnique({
       where: { id: property.id },
-      include: { images: true },
+      include: { images: true, amenities: { orderBy: { order: 'asc' } } },
     });
-    res.status(201).json(full);
+    res.status(201).json(await withCatalogLabels(full));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al crear propiedad' });
@@ -102,10 +142,14 @@ exports.update = async (req, res) => {
     const {
       title, description, price, currency, operation, type, status,
       bedrooms, bathrooms, area, garage, address, city, neighborhood,
-      lat, lng, featured, deleteImages,
+      lat, lng, featured, deleteImages, amenityIds,
     } = req.body;
 
     const data = {};
+    // Amenities: si vino el campo, se reemplaza el set completo (marca/desmarca).
+    if (amenityIds !== undefined) {
+      data.amenities = { set: parseAmenityIds(amenityIds).map((aid) => ({ id: aid })) };
+    }
     if (title !== undefined) data.title = title;
     if (description !== undefined) data.description = description;
     if (price !== undefined) data.price = parseFloat(price);
@@ -144,9 +188,12 @@ exports.update = async (req, res) => {
     const property = await prisma.property.update({
       where: { id },
       data,
-      include: { images: { orderBy: { order: 'asc' } } },
+      include: {
+        images: { orderBy: { order: 'asc' } },
+        amenities: { orderBy: { order: 'asc' } },
+      },
     });
-    res.json(property);
+    res.json(await withCatalogLabels(property));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al actualizar propiedad' });

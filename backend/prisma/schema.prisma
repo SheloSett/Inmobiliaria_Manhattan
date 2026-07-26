@@ -22,8 +22,13 @@ model Property {
   description   String
   price         Float
   currency      String        @default("USD")
-  operation     Operation
-  type          PropertyType
+  // operation y type dejaron de ser enums fijos: ahora son strings que referencian
+  // (por su `value`) a los catálogos OperationType / PropertyTypeOption, gestionables
+  // desde el admin (Ajustes → Catálogos). Se guardan como texto para poder agregar
+  // tipos nuevos sin migrar la BD. Los valores existentes (SALE/RENT/APARTMENT...) se
+  // conservan; el seed crea los catálogos con esos mismos `value`.
+  operation     String
+  type          String
   status        PropertyStatus @default(AVAILABLE)
   bedrooms      Int?
   bathrooms     Int?
@@ -37,8 +42,36 @@ model Property {
   featured      Boolean       @default(false)
   images        PropertyImage[]
   contacts      Contact[]
+  amenities     Amenity[]     @relation("PropertyAmenities")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+// --- Catálogos gestionables desde el admin (Ajustes → Catálogos) ---
+// `value` es el identificador estable que se guarda en Property (ej: "SALE"); `label`
+// es lo que se muestra (ej: "Venta"). `order` define el orden en los desplegables.
+
+model OperationType {
+  id    Int    @id @default(autoincrement())
+  value String @unique
+  label String
+  order Int    @default(0)
+}
+
+model PropertyTypeOption {
+  id    Int    @id @default(autoincrement())
+  value String @unique
+  label String
+  order Int    @default(0)
+}
+
+model Amenity {
+  id         Int        @id @default(autoincrement())
+  value      String     @unique
+  label      String
+  icon       String     @default("")
+  order      Int        @default(0)
+  properties Property[]  @relation("PropertyAmenities")
 }
 
 model PropertyImage {
@@ -75,19 +108,35 @@ model SiteSettings {
   logoUrl       String @default("")
 }
 
-enum Operation {
-  SALE
-  RENT
+// Contenido editable de las páginas públicas (mini-CMS del panel de Ajustes).
+// Una fila por página (home, properties, valuations, about, contact, footer);
+// `content` guarda un objeto JSON flexible con los campos editables de esa página
+// (textos, títulos, URLs de imágenes). El esquema de qué campos tiene cada página
+// vive en el frontend (frontend/src/config/siteContent.js), así que agregar o
+// quitar campos no requiere migrar la BD: solo se cambia ese esquema.
+model PageContent {
+  id        Int      @id @default(autoincrement())
+  page      String   @unique
+  content   Json     @default("{}")
+  updatedAt DateTime @updatedAt
 }
 
-enum PropertyType {
-  HOUSE
-  APARTMENT
-  OFFICE
-  LOCAL
-  LAND
-  PH
-}
+// enums Operation y PropertyType COMENTADOS (no eliminados, según regla del proyecto):
+// se reemplazaron por los catálogos gestionables OperationType / PropertyTypeOption
+// (21/07/2026). Los `value` de esos catálogos replican estos valores por defecto.
+// enum Operation {
+//   SALE
+//   RENT
+// }
+//
+// enum PropertyType {
+//   HOUSE
+//   APARTMENT
+//   OFFICE
+//   LOCAL
+//   LAND
+//   PH
+// }
 
 enum PropertyStatus {
   AVAILABLE

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\frontend\" -Exclude node_modules -Recurse | Where-Object { $_.PSIsContainer -eq $false } | Select-Object FullName)",
+      "PowerShell($files = @\\(\\); Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\frontend\" -Recurse -File | ForEach-Object { if \\($_.FullName -notmatch 'node_modules'\\) { $files += $_.FullName } }; $files | Sort-Object)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\Stitch_Templates\\\\Home_template\" -Force | Format-Table Name, Length, @{Label='Type';Expression={if\\($_.PSIsContainer\\){'Folder'}else{$_.Extension}}})",
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\Stitch_Templates\\\\adimn_dash_template\" -Recurse -Force)",
+      "Bash(Select-Object -Property FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "PowerShell($imagePath = \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\Stitch_Templates\\\\adimn_dash_template\\\\screen.png\"; if \\(Test-Path $imagePath\\) { $item = Get-Item $imagePath; \"File: $\\($item.Name\\)`nSize: $\\($item.Length\\) bytes`nCreated: $\\($item.CreationTime\\)`nModified: $\\($item.LastWriteTime\\)\" })",
+      "Bash(cd /c/Users/shelo/Desktop/workspace/inmobiliaria-manhattan/frontend && cat package.json | grep -E \"lucide|dependencies\" )",
+      "Read(//c/c/Users/shelo/Desktop/workspace/inmobiliaria-manhattan/frontend/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\Stitch_Templates\\\\prop_details_Template\\\\\" -File -Recurse | Select-Object FullName | ConvertTo-Csv -NoTypeInformation | Out-String)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\Stitch_Templates\\\\prop_details_Template\\\\\" -File -Recurse | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\frontend\\\\src\\\\\" -Recurse | Select-Object FullName, @{Name='Type';Expression={if\\($_.PSIsContainer\\){'Directory'}else{'File'}}})",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\backend\\\\\" -Recurse -File | Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\frontend\\\\\" -Recurse -File | Where-Object { $_.FullName -notmatch 'node_modules' } | Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\shelo\\\\Desktop\\\\workspace\\\\inmobiliaria-manhattan\\\\Stitch_Templates\\\\Prop_list_Template\\\\\" -Force)"
+    ]
+  }
+}
