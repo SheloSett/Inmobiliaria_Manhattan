@@ -301,6 +301,13 @@ export default function SearchResults() {
                         {p.area != null && (
                           <span className="flex items-center gap-1 text-xs"><span className="material-symbols-outlined text-[16px]">straighten</span>{p.area} m²</span>
                         )}
+                        {p.garage && (
+                          <span className="flex items-center gap-1 text-xs" title="Cochera"><span className="material-symbols-outlined text-[16px]">directions_car</span></span>
+                        )}
+                        {/* "Con llave": ícono, solo si la propiedad la tiene (consistencia con las cards) */}
+                        {p.hasKey && (
+                          <span className="flex items-center gap-1 text-secondary text-xs" title="Con llave"><span className="material-symbols-outlined text-[16px]">key</span></span>
+                        )}
                         {/* Botón destacado (antes era un link de texto chico poco visible) */}
                         <Link
                           to={`/propiedades/${p.id}`}

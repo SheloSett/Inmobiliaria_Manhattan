@@ -5,7 +5,12 @@ import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useCatalogs } from '../hooks/useCatalogs';
-import { propertyThumbnail } from '../utils/media';
+// La card local se reemplazó por el componente compartido (28/07/2026), para que sea
+// idéntica a la de Home (destacadas). Se importa con alias y la función local PropertyCard
+// pasa a delegar en él; el markup local original quedó comentado abajo.
+import SharedPropertyCard from '../components/PropertyCard';
+// propertyThumbnail ya no se usa acá (lo usa el componente compartido); import comentado.
+// import { propertyThumbnail } from '../utils/media';
 // El título y subtítulo del encabezado son editables desde el admin
 // (Ajustes → Contenido → Propiedades). Defaults en config/siteContent.js.
 // Los desplegables de operación/tipo salen del catálogo gestionable (useCatalogs).
@@ -26,10 +31,12 @@ const STATUS_LABELS = {
   RENTED: 'Alquilado',
 };
 
-function formatPrice(currency, price, operation) {
-  const formatted = `${currency} $${Number(price).toLocaleString('es-AR')}`;
-  return operation === 'RENT' ? `${formatted}/mes` : formatted;
-}
+// formatPrice COMENTADO: solo lo usaba la card local (ahora comentada); vive en el
+// componente compartido <PropertyCard/>.
+// function formatPrice(currency, price, operation) {
+//   const formatted = `${currency} $${Number(price).toLocaleString('es-AR')}`;
+//   return operation === 'RENT' ? `${formatted}/mes` : formatted;
+// }
 
 // ── Navbar ──────────────────────────────────────────────────────────────────
 // El markup inline original quedó comentado debajo (no eliminado, según regla del
@@ -92,101 +99,74 @@ function Footer() {
 // }
 
 // ── Property Card ─────────────────────────────────────────────────────────────
+// Ahora delega en el componente compartido para que la card sea idéntica en todo el
+// sitio. El markup local original quedó comentado debajo (no eliminado, según regla).
 function PropertyCard({ property }) {
-  // COMENTADO: estado del botón de favoritos. Se deshabilitó porque no existen
-  // usuarios en la base de datos, por lo que no hay dónde persistir los favoritos.
-  // const [favored, setFavored] = useState(false);
-  // Thumbnail: foto principal → primera foto → poster del video (si solo hay videos).
-  const primaryImg = propertyThumbnail(property.images);
-  // Prefiere el label enriquecido del backend (catálogo gestionable); fallback al mapa.
-  const opLabel = property.operationLabel ?? OPERATION_LABELS[property.operation] ?? property.operation;
-  const opStyle = property.operation === 'SALE'
-    ? 'bg-secondary text-on-secondary'
-    : 'bg-primary text-on-primary';
-
-  return (
-    <article className="bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-shadow duration-300 group overflow-hidden rounded-lg flex flex-col">
-      {/* Image */}
-      <div className="relative h-56 overflow-hidden flex-shrink-0">
-        {primaryImg ? (
-          <img
-            alt={property.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            src={primaryImg}
-          />
-        ) : (
-          <div className="w-full h-full bg-surface-container flex items-center justify-center">
-            <span className="material-symbols-outlined text-[48px] text-outline">image_not_supported</span>
-          </div>
-        )}
-        {/* Operation badge */}
-        <div className={`absolute top-4 left-4 px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded ${opStyle}`}>
-          {opLabel}
-        </div>
-        {/* Status badge (only if not AVAILABLE) */}
-        {property.status !== 'AVAILABLE' && (
-          <div className="absolute top-4 left-[calc(100%-8rem)] bg-surface/90 backdrop-blur-sm text-on-surface px-2 py-1 font-label-md text-[11px] uppercase tracking-wider rounded">
-            {STATUS_LABELS[property.status]}
-          </div>
-        )}
-        {/* COMENTADO: botón de favoritos. Se deshabilitó porque no existen usuarios
-            en la base de datos, por lo que el favorito no se guardaría en ningún lado
-            (solo cambiaba un estado local que se perdía al recargar la página). */}
-        {/* <button
-          className={`absolute top-4 right-4 p-2 rounded-full backdrop-blur-md transition-colors ${favored ? 'bg-secondary text-on-secondary' : 'bg-primary/80 text-on-primary hover:bg-secondary'}`}
-          onClick={e => { e.preventDefault(); setFavored(f => !f); }}
-        >
-          <span className={`material-symbols-outlined text-[20px]${favored ? ' fill-1' : ''}`}>favorite</span>
-        </button> */}
-      </div>
-
-      {/* Body */}
-      <Link to={`/propiedades/${property.id}`} className="p-6 flex flex-col flex-grow">
-        <div className="font-price-display text-price-display text-primary mb-1">
-          {formatPrice(property.currency, property.price, property.operation)}
-        </div>
-        <h3 className="font-headline-md text-headline-md text-on-surface mb-2 line-clamp-2 leading-tight">
-          {property.title}
-        </h3>
-        <p className="font-body-md text-on-surface-variant mb-4 flex items-start gap-1 text-sm line-clamp-1">
-          <span className="material-symbols-outlined text-[16px] mt-[3px] flex-shrink-0">location_on</span>
-          {[property.address, property.neighborhood, property.city].filter(Boolean).join(', ')}
-        </p>
-        <div className="mt-auto pt-4 border-t border-outline-variant flex gap-4">
-          {property.bedrooms != null && (
-            <div className="flex items-center gap-1 text-on-surface-variant">
-              <span className="material-symbols-outlined text-[20px]">bed</span>
-              <span className="font-label-md text-label-md">{property.bedrooms}</span>
-            </div>
-          )}
-          {property.bathrooms != null && (
-            <div className="flex items-center gap-1 text-on-surface-variant">
-              <span className="material-symbols-outlined text-[20px]">shower</span>
-              <span className="font-label-md text-label-md">{property.bathrooms}</span>
-            </div>
-          )}
-          {property.area != null && (
-            <div className="flex items-center gap-1 text-on-surface-variant">
-              <span className="material-symbols-outlined text-[20px]">straighten</span>
-              <span className="font-label-md text-label-md">{property.area} m²</span>
-            </div>
-          )}
-          {property.garage && (
-            <div className="flex items-center gap-1 text-on-surface-variant">
-              <span className="material-symbols-outlined text-[20px]">directions_car</span>
-            </div>
-          )}
-          {/* "Con llave": ícono de llave, solo si la propiedad la tiene (27/07/2026). */}
-          {property.hasKey && (
-            <div className="flex items-center gap-1 text-secondary" title="Con llave">
-              <span className="material-symbols-outlined text-[20px]">key</span>
-            </div>
-          )}
-        </div>
-      </Link>
-    </article>
-  );
+  return <SharedPropertyCard property={property} />;
 }
+// Card local original (comentada):
+// function PropertyCard({ property }) {
+//   // COMENTADO: estado del botón de favoritos. Se deshabilitó porque no existen
+//   // usuarios en la base de datos, por lo que no hay dónde persistir los favoritos.
+//   // const [favored, setFavored] = useState(false);
+//   // Thumbnail: foto principal → primera foto → poster del video (si solo hay videos).
+//   const primaryImg = propertyThumbnail(property.images);
+//   // Prefiere el label enriquecido del backend (catálogo gestionable); fallback al mapa.
+//   const opLabel = property.operationLabel ?? OPERATION_LABELS[property.operation] ?? property.operation;
+//   const opStyle = property.operation === 'SALE'
+//     ? 'bg-secondary text-on-secondary'
+//     : 'bg-primary text-on-primary';
+//
+//   return (
+//     <article className="bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-shadow duration-300 group overflow-hidden rounded-lg flex flex-col">
+//       {/* Image */}
+//       <div className="relative h-56 overflow-hidden flex-shrink-0">
+//         {primaryImg ? (
+//           <img
+//             alt={property.title}
+//             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+//             src={primaryImg}
+//           />
+//         ) : (
+//           <div className="w-full h-full bg-surface-container flex items-center justify-center">
+//             <span className="material-symbols-outlined text-[48px] text-outline">image_not_supported</span>
+//           </div>
+//         )}
+//         {/* Operation badge */}
+//         <div className={`absolute top-4 left-4 px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded ${opStyle}`}>
+//           {opLabel}
+//         </div>
+//         {/* Status badge (only if not AVAILABLE) */}
+//         {property.status !== 'AVAILABLE' && (
+//           <div className="absolute top-4 left-[calc(100%-8rem)] bg-surface/90 backdrop-blur-sm text-on-surface px-2 py-1 font-label-md text-[11px] uppercase tracking-wider rounded">
+//             {STATUS_LABELS[property.status]}
+//           </div>
+//         )}
+//       </div>
+//
+//       {/* Body */}
+//       <Link to={`/propiedades/${property.id}`} className="p-6 flex flex-col flex-grow">
+//         <div className="font-price-display text-price-display text-primary mb-1">
+//           {formatPrice(property.currency, property.price, property.operation)}
+//         </div>
+//         <h3 className="font-headline-md text-headline-md text-on-surface mb-2 line-clamp-2 leading-tight">
+//           {property.title}
+//         </h3>
+//         <p className="font-body-md text-on-surface-variant mb-4 flex items-start gap-1 text-sm line-clamp-1">
+//           <span className="material-symbols-outlined text-[16px] mt-[3px] flex-shrink-0">location_on</span>
+//           {[property.address, property.neighborhood, property.city].filter(Boolean).join(', ')}
+//         </p>
+//         <div className="mt-auto pt-4 border-t border-outline-variant flex gap-4">
+//           {property.bedrooms != null && (<div className="flex items-center gap-1 text-on-surface-variant"><span className="material-symbols-outlined text-[20px]">bed</span><span className="font-label-md text-label-md">{property.bedrooms}</span></div>)}
+//           {property.bathrooms != null && (<div className="flex items-center gap-1 text-on-surface-variant"><span className="material-symbols-outlined text-[20px]">shower</span><span className="font-label-md text-label-md">{property.bathrooms}</span></div>)}
+//           {property.area != null && (<div className="flex items-center gap-1 text-on-surface-variant"><span className="material-symbols-outlined text-[20px]">straighten</span><span className="font-label-md text-label-md">{property.area} m²</span></div>)}
+//           {property.garage && (<div className="flex items-center gap-1 text-on-surface-variant"><span className="material-symbols-outlined text-[20px]">directions_car</span></div>)}
+//           {property.hasKey && (<div className="flex items-center gap-1 text-secondary" title="Con llave"><span className="material-symbols-outlined text-[20px]">key</span></div>)}
+//         </div>
+//       </Link>
+//     </article>
+//   );
+// }
 
 // ── Skeleton Card ─────────────────────────────────────────────────────────────
 function SkeletonCard() {

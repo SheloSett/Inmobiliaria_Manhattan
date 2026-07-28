@@ -4,7 +4,11 @@ import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useCatalogs } from '../hooks/useCatalogs';
-import { propertyThumbnail } from '../utils/media';
+// Card de propiedad compartida (28/07/2026): la card local de destacadas se reemplazó por
+// este componente para que sea idéntica a la del catálogo. La local quedó comentada abajo.
+import SharedPropertyCard from '../components/PropertyCard';
+// propertyThumbnail solo lo usaba mapPropertyToCard (hoy comentado); import comentado.
+// import { propertyThumbnail } from '../utils/media';
 import api from '../services/api';
 // Los textos e imágenes de esta página ahora son editables desde el admin
 // (Ajustes → Contenido → Inicio). Los valores por defecto —el contenido original
@@ -30,6 +34,10 @@ const TESTIMONIAL_AVATARS = [
   { bg: 'bg-tertiary-container', text: 'text-on-tertiary-container' },
 ];
 
+// mapPropertyToCard y la card local COMENTADAS (no eliminadas, según regla del proyecto).
+// Motivo: se unificó la card en el componente compartido <SharedPropertyCard/> (28/07/2026),
+// que recibe la propiedad cruda; ya no hace falta mapear ni tener una card propia acá.
+/*
 // Mapea una propiedad de la API a las props que espera <PropertyCard/>.
 function mapPropertyToCard(property) {
   // Foto principal → primera foto → poster del video (si solo hay videos).
@@ -89,6 +97,7 @@ function PropertyCard({ id, status, statusStyle, price, priceSuffix, title, addr
     </Link>
   );
 }
+*/
 
 function TestimonialCard({ name, initial, avatarBg, avatarText, date, text }) {
   return (
@@ -132,8 +141,10 @@ export default function Home() {
   // se marcara en el admin, porque nunca se conectó a la API (fix 20/07/2026).
   const [properties, setProperties] = useState([]);
   useEffect(() => {
+    // Se guardan las propiedades CRUDAS (antes se mapeaban con mapPropertyToCard para la
+    // card local); ahora la card compartida <SharedPropertyCard/> recibe la propiedad tal cual.
     api.get('/properties', { params: { featured: true, limit: 6 } })
-      .then(res => setProperties(res.data.properties.map(mapPropertyToCard)))
+      .then(res => setProperties(res.data.properties))
       .catch(() => setProperties([]));
   }, []);
 
@@ -218,7 +229,7 @@ export default function Home() {
               </div>
             ) : (
               properties.map((prop) => (
-                <PropertyCard key={prop.id} {...prop} />
+                <SharedPropertyCard key={prop.id} property={prop} />
               ))
             )}
           </div>
