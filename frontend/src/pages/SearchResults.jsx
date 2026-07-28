@@ -301,12 +301,14 @@ export default function SearchResults() {
                         {p.area != null && (
                           <span className="flex items-center gap-1 text-xs"><span className="material-symbols-outlined text-[16px]">straighten</span>{p.area} m²</span>
                         )}
+                        {/* Botón destacado (antes era un link de texto chico poco visible) */}
                         <Link
                           to={`/propiedades/${p.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="ml-auto text-secondary font-label-md text-xs hover:underline"
+                          className="ml-auto inline-flex items-center gap-1 bg-secondary text-on-secondary font-label-md text-xs px-4 py-2 rounded-lg shadow-sm hover:brightness-110 hover:shadow-md active:scale-95 transition-all"
                         >
-                          Ver detalle →
+                          Ver detalle
+                          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                         </Link>
                       </div>
                     </div>

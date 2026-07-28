@@ -1,4 +1,14 @@
+import { Link } from 'react-router-dom';
 import { useSiteContent } from '../hooks/useSiteContent';
+
+// Links legales del footer → ahora apuntan a páginas reales (antes iban a "#").
+// El contenido de cada una es editable desde Ajustes → Contenido.
+const LEGAL_LINKS = [
+  { label: 'Privacidad', to: '/privacidad' },
+  { label: 'Términos', to: '/terminos' },
+  { label: 'Mapa del Sitio', to: '/mapa-del-sitio' },
+  { label: 'Ayuda', to: '/ayuda' },
+];
 
 // Footer único para todas las páginas públicas (Manhattan Prestige Design System).
 // Centralizado acá para garantizar que el footer sea idéntico en todo el sitio.
@@ -111,11 +121,11 @@ export default function PublicFooter() {
 
         {/* Barra inferior: links legales + copyright */}
         <div className="border-t border-on-primary/10 mt-stack-md pt-stack-md flex flex-col md:flex-row-reverse justify-between items-center gap-4">
-          {/* Los links Privacidad/Términos/etc. siguen fijos: apuntan a "#" y no tienen
-              página real, por eso no se hicieron editables. */}
+          {/* Links legales → páginas reales (Privacidad, Términos, Mapa del Sitio, Ayuda),
+              con contenido editable desde el CMS. Antes iban a "#". */}
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-            {['Privacidad', 'Términos', 'Mapa del Sitio', 'Ayuda'].map(label => (
-              <a key={label} className="font-label-md text-label-md text-on-primary-container opacity-80 hover:opacity-100 hover:text-secondary transition-opacity" href="#">{label}</a>
+            {LEGAL_LINKS.map(({ label, to }) => (
+              <Link key={to} to={to} className="font-label-md text-label-md text-on-primary-container opacity-80 hover:opacity-100 hover:text-secondary transition-opacity">{label}</Link>
             ))}
           </nav>
           {/* Antes: copyright "© 2024 Manhattan..." fijo; ahora c.copyright */}

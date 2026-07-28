@@ -38,6 +38,10 @@ function formatPrice(currency, price) {
 const WHATSAPP_CONSULTAS = import.meta.env.VITE_PHONE_SHAUL_WA || '5491160479977';
 const TEL_CONSULTAS = import.meta.env.VITE_PHONE_SHAUL_TEL || '+5491160479977';
 
+// Mensaje precargado en el textarea de consulta (a pedido del cliente 26/07/2026):
+// el interesado ya lo encuentra escrito y solo tiene que poner su nombre.
+const DEFAULT_MESSAGE = 'Hola, me interesa esta propiedad.';
+
 // El markup inline original quedó comentado debajo (no eliminado, según regla del
 // proyecto). Motivo: se reemplazó por el componente compartido <PublicNavbar/> para
 // que el navbar sea idéntico en todas las páginas públicas y los links de
@@ -121,7 +125,7 @@ export default function PropertyDetail() {
   // COMENTADO: estado del botón de favoritos. Se deshabilitó porque no existen
   // usuarios en la base de datos, por lo que no hay dónde persistir los favoritos.
   // const [favorited, setFavorited] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: DEFAULT_MESSAGE });
   // COMENTADO: estado "sending" ya no es necesario porque el envío dejó de ser una
   // request asíncrona a la API; ahora solo se abre WhatsApp con el mensaje armado.
   // const [sending, setSending] = useState(false);
@@ -152,7 +156,7 @@ export default function PropertyDetail() {
   //   try {
   //     await api.post('/contacts', { ...formData, propertyId: property.id });
   //     toast.success('¡Consulta enviada! Te contactaremos a la brevedad.');
-  //     setFormData({ name: '', email: '', phone: '', message: '' });
+  //     setFormData({ name: '', email: '', phone: '', message: DEFAULT_MESSAGE });
   //   } catch {
   //     toast.error('Error al enviar la consulta. Intentá de nuevo.');
   //   } finally {
@@ -176,15 +180,17 @@ export default function PropertyDetail() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!formData.name || !formData.message) {
-      toast.error('Completá nombre y mensaje');
+    // El nombre dejó de ser obligatorio (26/07/2026): solo se pide el mensaje. Si el
+    // interesado escribió su nombre, se agrega al mensaje; si no, se omite esa línea.
+    if (!formData.message) {
+      toast.error('Escribí tu consulta');
       return;
     }
     const message = [
       buildWhatsAppMessage(formData.message),
-      '',
-      '*Mis datos de contacto*',
-      `👤 Nombre: ${formData.name}`,
+      formData.name && '',
+      formData.name && '*Mis datos de contacto*',
+      formData.name && `👤 Nombre: ${formData.name}`,
       // Email y Teléfono comentados: los inputs se quitaron del formulario (26/07/2026),
       // así que estos campos irían siempre vacíos. formData los conserva por compatibilidad.
       // formData.email && `📧 Email: ${formData.email}`,
@@ -192,7 +198,7 @@ export default function PropertyDetail() {
     ].filter(Boolean).join('\n');
     window.open(`https://wa.me/${WHATSAPP_CONSULTAS}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     toast.success('Abriendo WhatsApp con tu consulta...');
-    setFormData({ name: '', email: '', phone: '', message: '' });
+    setFormData({ name: '', email: '', phone: '', message: DEFAULT_MESSAGE });
   }
 
   function handleChange(e) {
@@ -201,6 +207,11 @@ export default function PropertyDetail() {
 
   // Compartir la propiedad: usa el menú nativo del sistema (Web Share API, disponible
   // sobre todo en mobile); si el navegador no lo soporta, copia el enlace al portapapeles.
+  //
+  // IMPORTANTE (fix 27/07/2026): tanto navigator.share como navigator.clipboard SOLO
+  // funcionan en "contexto seguro" (HTTPS o localhost). En el VPS el sitio se sirve por
+  // HTTP (http://177.7.59.16:8080), así que ambos fallan y salía "No se pudo compartir".
+  // Por eso se agrega un fallback con execCommand('copy'), que sí funciona sobre HTTP.
   async function handleShare() {
     const url = window.location.href;
     const shareData = {
@@ -210,16 +221,36 @@ export default function PropertyDetail() {
         : 'Mirá esta propiedad en Inmobiliaria Manhattan',
       url,
     };
+    // Copia usando execCommand + un textarea temporal. Es el método "viejo", pero es
+    // el único que anda sin HTTPS. Devuelve true si copió.
+    const legacyCopy = (text) => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.setAttribute('readonly', '');
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    };
     const copyLink = async () => {
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success('Enlace copiado al portapapeles');
-      } catch {
-        toast.error('No se pudo compartir el enlace');
+      // Portapapeles moderno: solo en contexto seguro (HTTPS/localhost).
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(url);
+          toast.success('Enlace copiado al portapapeles');
+          return;
+        } catch { /* cae al fallback legacy */ }
       }
+      if (legacyCopy(url)) toast.success('Enlace copiado al portapapeles');
+      else toast.error('No se pudo copiar el enlace');
     };
     try {
-      if (navigator.share) {
+      // navigator.share requiere contexto seguro; si no, vamos directo a copiar.
+      if (navigator.share && window.isSecureContext) {
         await navigator.share(shareData);
       } else {
         await copyLink();

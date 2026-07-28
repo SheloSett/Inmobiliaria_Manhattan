@@ -4,6 +4,7 @@ import { ArrowLeft, CloudUpload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useCatalogs } from '../../hooks/useCatalogs';
+import LocationPicker from '../../components/LocationPicker';
 
 // Página de creación / edición de propiedad — rediseño basado en el template
 // Stitch_Templates/admin_create_Properties (15/07/2026). Reemplaza al modal
@@ -50,6 +51,8 @@ const EMPTY_FORM = {
   operation: 'SALE', type: 'APARTMENT', status: 'AVAILABLE',
   bedrooms: '', bathrooms: '', area: '', garage: false,
   address: '', city: '', neighborhood: '', featured: false,
+  // lat/lng se marcan en el mapa (LocationPicker); vacíos = sin ubicación exacta.
+  lat: '', lng: '',
 };
 
 const MAX_IMAGES = 20;
@@ -118,6 +121,8 @@ export default function AdminPropertyForm() {
           city: p.city,
           neighborhood: p.neighborhood || '',
           featured: p.featured || false,
+          lat: p.lat ?? '',
+          lng: p.lng ?? '',
         });
         // Precarga los amenities ya marcados en la propiedad.
         setSelectedAmenities((p.amenities || []).map((a) => a.id));
@@ -205,8 +210,14 @@ export default function AdminPropertyForm() {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => {
+        // lat/lng se mandan aparte (abajo), incluso vacíos, para poder borrar la ubicación.
+        if (k === 'lat' || k === 'lng') return;
         if (v !== '' && v !== null && v !== undefined) fd.append(k, v);
       });
+      // Ubicación: se envían siempre (aunque estén vacías). En el backend, vacío → null,
+      // así que en edición se puede quitar la ubicación marcada.
+      fd.append('lat', form.lat === '' || form.lat == null ? '' : form.lat);
+      fd.append('lng', form.lng === '' || form.lng == null ? '' : form.lng);
       newImages.forEach(img => fd.append('images', img));
       if (deletedIds.length) fd.append('deleteImages', JSON.stringify(deletedIds));
       // Siempre se manda amenityIds (aunque sea []), para que al editar se pueda
@@ -322,6 +333,16 @@ export default function AdminPropertyForm() {
                   className={INPUT_CLASS} placeholder="Palermo" />
               </div>
             </div>
+          </FormSection>
+
+          {/* ── Ubicación en el mapa ── (guarda lat/lng reales para el mapa de búsqueda) */}
+          <FormSection title="Ubicación en el mapa">
+            <LocationPicker
+              lat={form.lat}
+              lng={form.lng}
+              address={[form.address, form.neighborhood, form.city, 'Argentina'].filter(Boolean).join(', ')}
+              onChange={(lat, lng) => setForm(prev => ({ ...prev, lat, lng }))}
+            />
           </FormSection>
 
           {/* ── Detalles Técnicos ── */}

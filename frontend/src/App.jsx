@@ -10,6 +10,10 @@ import ContactPage from './pages/Contact';
 import AboutUs from './pages/AboutUs';
 import Valuations from './pages/Valuations';
 import SearchResults from './pages/SearchResults';
+// Páginas informativas del footer (contenido editable desde Ajustes → Contenido).
+import LegalPage from './pages/LegalPage';
+import Sitemap from './pages/Sitemap';
+import Help from './pages/Help';
 
 // Páginas admin
 import AdminLogin from './pages/admin/AdminLogin';
@@ -47,6 +51,12 @@ export default function App() {
           <Route path="/contacto" element={<ContactPage />} />
           <Route path="/nosotros" element={<AboutUs />} />
           <Route path="/tasaciones" element={<Valuations />} />
+          {/* Páginas del footer (contenido editable desde el CMS). LegalPage es genérica
+              y se reutiliza para Privacidad y Términos vía la prop pageKey. */}
+          <Route path="/privacidad" element={<LegalPage pageKey="privacy" />} />
+          <Route path="/terminos" element={<LegalPage pageKey="terms" />} />
+          <Route path="/mapa-del-sitio" element={<Sitemap />} />
+          <Route path="/ayuda" element={<Help />} />
 
           {/* Admin */}
           <Route path="/admin/login" element={<AdminLogin />} />

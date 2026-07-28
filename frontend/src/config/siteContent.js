@@ -221,6 +221,92 @@ export const PAGES = [
       { key: 'copyright', label: 'Texto de copyright', type: 'text', default: '© 2024 Manhattan Negocios Inmobiliarios. Todos los derechos reservados.' },
     ],
   },
+  // ── Páginas legales / informativas del footer (26/07/2026) ──────────────────
+  // Privacidad, Términos, Mapa del Sitio y Ayuda: son páginas reales (antes los links
+  // del footer iban a "#"). Todo su contenido es editable desde Ajustes → Contenido.
+  {
+    key: 'privacy',
+    label: 'Privacidad',
+    icon: 'privacy_tip',
+    fields: [
+      { key: 'title', label: 'Título', type: 'text', default: 'Política de Privacidad' },
+      { key: 'updatedAt', label: 'Fecha de actualización', type: 'text', default: 'Última actualización: julio de 2026' },
+      { key: 'intro', label: 'Introducción', type: 'textarea', default: 'En Manhattan Negocios Inmobiliarios valoramos tu privacidad. Esta política explica qué datos recopilamos, cómo los usamos y cuáles son tus derechos.' },
+      {
+        key: 'sections',
+        label: 'Secciones',
+        type: 'list',
+        itemLabel: 'Sección',
+        itemFields: [
+          { key: 'heading', label: 'Título de la sección', type: 'text', default: '' },
+          { key: 'body', label: 'Contenido', type: 'textarea', default: '' },
+        ],
+        default: [
+          { heading: 'Datos que recopilamos', body: 'Recopilamos los datos que nos proporcionás voluntariamente al completar formularios de contacto o tasación (nombre, teléfono, email) y datos de navegación básicos para mejorar el sitio.' },
+          { heading: 'Uso de la información', body: 'Usamos tus datos únicamente para responder tus consultas, brindarte información sobre propiedades y mejorar nuestros servicios. No vendemos ni cedemos tu información a terceros.' },
+          { heading: 'Tus derechos', body: 'Podés solicitar el acceso, la rectificación o la eliminación de tus datos personales en cualquier momento escribiéndonos a nuestro email de contacto.' },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'terms',
+    label: 'Términos',
+    icon: 'gavel',
+    fields: [
+      { key: 'title', label: 'Título', type: 'text', default: 'Términos y Condiciones' },
+      { key: 'updatedAt', label: 'Fecha de actualización', type: 'text', default: 'Última actualización: julio de 2026' },
+      { key: 'intro', label: 'Introducción', type: 'textarea', default: 'El uso de este sitio implica la aceptación de los presentes Términos y Condiciones. Te pedimos que los leas atentamente.' },
+      {
+        key: 'sections',
+        label: 'Secciones',
+        type: 'list',
+        itemLabel: 'Sección',
+        itemFields: [
+          { key: 'heading', label: 'Título de la sección', type: 'text', default: '' },
+          { key: 'body', label: 'Contenido', type: 'textarea', default: '' },
+        ],
+        default: [
+          { heading: 'Uso del sitio', body: 'El contenido de este sitio tiene fines informativos. Las publicaciones de propiedades no constituyen una oferta contractual y pueden modificarse o retirarse sin previo aviso.' },
+          { heading: 'Información de las propiedades', body: 'Nos esforzamos por mantener la información actualizada y precisa, pero no garantizamos que esté libre de errores. Los precios y la disponibilidad deben confirmarse con nuestros asesores.' },
+          { heading: 'Propiedad intelectual', body: 'Todos los contenidos, marcas y logos del sitio pertenecen a Manhattan Negocios Inmobiliarios y no pueden reproducirse sin autorización.' },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'sitemap',
+    label: 'Mapa del Sitio',
+    icon: 'account_tree',
+    fields: [
+      { key: 'title', label: 'Título', type: 'text', default: 'Mapa del Sitio' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea', default: 'Encontrá rápidamente todas las secciones de nuestro sitio.' },
+    ],
+  },
+  {
+    key: 'help',
+    label: 'Ayuda',
+    icon: 'help',
+    fields: [
+      { key: 'title', label: 'Título', type: 'text', default: 'Centro de Ayuda' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea', default: 'Resolvé las dudas más frecuentes. Si necesitás más ayuda, contactanos.' },
+      {
+        key: 'faqs',
+        label: 'Preguntas frecuentes',
+        type: 'list',
+        itemLabel: 'Pregunta',
+        itemFields: [
+          { key: 'question', label: 'Pregunta', type: 'text', default: '' },
+          { key: 'answer', label: 'Respuesta', type: 'textarea', default: '' },
+        ],
+        default: [
+          { question: '¿Cómo publico o vendo mi propiedad?', answer: 'Podés solicitar una tasación gratuita desde la sección Tasaciones o escribirnos por WhatsApp. Un asesor te contactará para coordinar los siguientes pasos.' },
+          { question: '¿Cómo agendo una visita a una propiedad?', answer: 'Entrá al detalle de la propiedad que te interese y usá el botón "Consultar por WhatsApp". Coordinamos la visita en el horario que mejor te quede.' },
+          { question: '¿La tasación tiene costo?', answer: 'No, la tasación es totalmente gratuita y sin compromiso.' },
+        ],
+      },
+    ],
+  },
 ];
 
 // Objeto { fieldKey: default } de una página. Base para el merge con lo guardado.

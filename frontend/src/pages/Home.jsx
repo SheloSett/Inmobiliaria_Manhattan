@@ -248,7 +248,8 @@ export default function Home() {
                 <li className="flex items-center gap-2 font-body-md text-on-surface"><span className="material-symbols-outlined text-secondary">check_circle</span> {c.sellBullet2}</li>
                 <li className="flex items-center gap-2 font-body-md text-on-surface"><span className="material-symbols-outlined text-secondary">check_circle</span> {c.sellBullet3}</li>
               </ul>
-              <a className="bg-secondary text-on-secondary px-6 py-3 rounded font-label-md text-label-md hover:opacity-90 transition-all inline-block shadow-sm" href="#">Más información</a>
+              {/* "Más información" ahora lleva a la página de Tasaciones (antes iba a "#"). */}
+              <Link className="bg-secondary text-on-secondary px-6 py-3 rounded font-label-md text-label-md hover:opacity-90 transition-all inline-block shadow-sm" to="/tasaciones">Más información</Link>
             </div>
             <div className="flex-1 w-full">
               {/* src antes hardcodeado; ahora c.sellImage (default = misma imagen) */}
