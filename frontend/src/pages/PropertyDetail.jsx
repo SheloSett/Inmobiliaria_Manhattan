@@ -5,6 +5,7 @@ import api from '../services/api';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 import ImageCarousel from '../components/ImageCarousel';
+import ShareMenu from '../components/ShareMenu';
 
 const OPERATION_LABELS = { SALE: 'VENTA', RENT: 'ALQUILER' };
 const TYPE_LABELS = {
@@ -169,12 +170,24 @@ export default function PropertyDetail() {
       '¡Hola! Vi esta propiedad en la web de Inmobiliaria Manhattan y quiero hacer una consulta.',
       '',
       '*CONSULTA POR PROPIEDAD*',
-      `🏠 ${property.title}`,
-      `📍 ${property.address}${property.neighborhood ? `, ${property.neighborhood}` : ''}, ${property.city}`,
-      `💰 ${formatPrice(property.currency, property.price)}`,
-      `🔗 ${window.location.href}`,
+      // Emojis 🏠📍💰🔗📝 comentados (27/07/2026): son caracteres "astral" (fuera del plano
+      // básico de Unicode, 4 bytes en UTF-8/par subrogado en UTF-16). WhatsApp Desktop y Web
+      // los decodifican mal al precargar el texto vía link wa.me: se ven como "�" y además
+      // rompen la detección automática del link de la propiedad (queda como texto plano, no
+      // clickeable, porque el caracter corrupto pega contra la URL). Se reemplazan por
+      // etiquetas de texto plano, que no tienen este problema en ningún cliente de WhatsApp.
+      // `🏠 ${property.title}`,
+      // `📍 ${property.address}${property.neighborhood ? `, ${property.neighborhood}` : ''}, ${property.city}`,
+      // `💰 ${formatPrice(property.currency, property.price)}`,
+      // `🔗 ${window.location.href}`,
+      // customText && '',
+      // customText && `📝 ${customText}`,
+      `Propiedad: ${property.title}`,
+      `Dirección: ${property.address}${property.neighborhood ? `, ${property.neighborhood}` : ''}, ${property.city}`,
+      `Precio: ${formatPrice(property.currency, property.price)}`,
+      `Link: ${window.location.href}`,
       customText && '',
-      customText && `📝 ${customText}`,
+      customText && `Mensaje: ${customText}`,
     ].filter(Boolean).join('\n');
   }
 
@@ -190,7 +203,10 @@ export default function PropertyDetail() {
       buildWhatsAppMessage(formData.message),
       formData.name && '',
       formData.name && '*Mis datos de contacto*',
-      formData.name && `👤 Nombre: ${formData.name}`,
+      // Emoji 👤 comentado (27/07/2026): mismo problema de decodificación de emojis astral
+      // en WhatsApp Desktop/Web (ver comentario en buildWhatsAppMessage más arriba).
+      // formData.name && `👤 Nombre: ${formData.name}`,
+      formData.name && `Nombre: ${formData.name}`,
       // Email y Teléfono comentados: los inputs se quitaron del formulario (26/07/2026),
       // así que estos campos irían siempre vacíos. formData los conserva por compatibilidad.
       // formData.email && `📧 Email: ${formData.email}`,
@@ -212,55 +228,53 @@ export default function PropertyDetail() {
   // funcionan en "contexto seguro" (HTTPS o localhost). En el VPS el sitio se sirve por
   // HTTP (http://177.7.59.16:8080), así que ambos fallan y salía "No se pudo compartir".
   // Por eso se agrega un fallback con execCommand('copy'), que sí funciona sobre HTTP.
-  async function handleShare() {
-    const url = window.location.href;
-    const shareData = {
-      title: property?.title || 'Propiedad — Manhattan',
-      text: property
-        ? `${property.title} — ${formatPrice(property.currency, property.price)}`
-        : 'Mirá esta propiedad en Inmobiliaria Manhattan',
-      url,
-    };
-    // Copia usando execCommand + un textarea temporal. Es el método "viejo", pero es
-    // el único que anda sin HTTPS. Devuelve true si copió.
-    const legacyCopy = (text) => {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      ta.setAttribute('readonly', '');
-      document.body.appendChild(ta);
-      ta.select();
-      let ok = false;
-      try { ok = document.execCommand('copy'); } catch { ok = false; }
-      document.body.removeChild(ta);
-      return ok;
-    };
-    const copyLink = async () => {
-      // Portapapeles moderno: solo en contexto seguro (HTTPS/localhost).
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          await navigator.clipboard.writeText(url);
-          toast.success('Enlace copiado al portapapeles');
-          return;
-        } catch { /* cae al fallback legacy */ }
-      }
-      if (legacyCopy(url)) toast.success('Enlace copiado al portapapeles');
-      else toast.error('No se pudo copiar el enlace');
-    };
-    try {
-      // navigator.share requiere contexto seguro; si no, vamos directo a copiar.
-      if (navigator.share && window.isSecureContext) {
-        await navigator.share(shareData);
-      } else {
-        await copyLink();
-      }
-    } catch (err) {
-      // Si el usuario cerró el menú nativo (AbortError), no hacemos nada; ante cualquier
-      // otro error, caemos al fallback de copiar el enlace.
-      if (err?.name !== 'AbortError') await copyLink();
-    }
-  }
+  // handleShare COMENTADO (no eliminado, según regla del proyecto): usaba el menú nativo
+  // navigator.share con fallback a copiar. Se reemplazó por el componente <ShareMenu/>,
+  // un desplegable propio con las apps + copiar, que además funciona sobre HTTP (el menú
+  // nativo del sistema requiere HTTPS y en el VPS no aparecía).
+  // async function handleShare() {
+  //   const url = window.location.href;
+  //   const shareData = {
+  //     title: property?.title || 'Propiedad — Manhattan',
+  //     text: property
+  //       ? `${property.title} — ${formatPrice(property.currency, property.price)}`
+  //       : 'Mirá esta propiedad en Inmobiliaria Manhattan',
+  //     url,
+  //   };
+  //   const legacyCopy = (text) => {
+  //     const ta = document.createElement('textarea');
+  //     ta.value = text;
+  //     ta.style.position = 'fixed';
+  //     ta.style.left = '-9999px';
+  //     ta.setAttribute('readonly', '');
+  //     document.body.appendChild(ta);
+  //     ta.select();
+  //     let ok = false;
+  //     try { ok = document.execCommand('copy'); } catch { ok = false; }
+  //     document.body.removeChild(ta);
+  //     return ok;
+  //   };
+  //   const copyLink = async () => {
+  //     if (navigator.clipboard && window.isSecureContext) {
+  //       try {
+  //         await navigator.clipboard.writeText(url);
+  //         toast.success('Enlace copiado al portapapeles');
+  //         return;
+  //       } catch { /* cae al fallback legacy */ }
+  //     }
+  //     if (legacyCopy(url)) toast.success('Enlace copiado al portapapeles');
+  //     else toast.error('No se pudo copiar el enlace');
+  //   };
+  //   try {
+  //     if (navigator.share && window.isSecureContext) {
+  //       await navigator.share(shareData);
+  //     } else {
+  //       await copyLink();
+  //     }
+  //   } catch (err) {
+  //     if (err?.name !== 'AbortError') await copyLink();
+  //   }
+  // }
 
   // Render ----------------------------------------------------------------
 
@@ -350,14 +364,14 @@ export default function PropertyDetail() {
 
                 <div className="flex flex-col items-start md:items-end gap-unit">
                   <div className="flex space-x-2 mb-2">
-                    <button
-                      type="button"
-                      onClick={handleShare}
-                      title="Compartir"
-                      className="p-2 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low transition-colors"
-                    >
-                      <span className="material-symbols-outlined">share</span>
-                    </button>
+                    {/* Botón de compartir reemplazado por <ShareMenu/>: un desplegable propio
+                        con WhatsApp/Facebook/Telegram/X/Email/Copiar, que funciona también
+                        sobre HTTP (el menú nativo navigator.share requiere HTTPS). */}
+                    <ShareMenu
+                      url={typeof window !== 'undefined' ? window.location.href : ''}
+                      title={property?.title || 'Propiedad — Manhattan'}
+                      text={property ? `${property.title} — ${formatPrice(property.currency, property.price)}` : 'Mirá esta propiedad en Inmobiliaria Manhattan'}
+                    />
                     {/* <button className="p-2 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-container-low transition-colors"> */}
                       {/* <span className="material-symbols-outlined">print</span> */}
                     {/* </button> */}

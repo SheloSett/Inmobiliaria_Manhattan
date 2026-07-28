@@ -82,16 +82,28 @@ export default function Valuations() {
       '¡Hola! Quiero solicitar una tasación de mi propiedad.',
       '',
       '*SOLICITUD DE TASACIÓN*',
-      `📍 Ubicación: ${form.location}`,
-      `🏠 Tipo de propiedad: ${form.propertyType}`,
-      form.rooms && `🚪 Ambientes: ${form.rooms}`,
-      form.area && `📐 Superficie total: ${form.area} m²`,
-      form.observations && `📝 Observaciones: ${form.observations}`,
+      // Emojis 📍🏠🚪📐📝👤📧📞 comentados (27/07/2026): son caracteres "astral" (fuera del
+      // plano básico de Unicode) que WhatsApp Desktop/Web decodifican mal al precargar el
+      // texto vía link wa.me, mostrando "�" en su lugar. Se reemplazan por etiquetas de
+      // texto plano (ver mismo fix en PropertyDetail.jsx y Contact.jsx).
+      // `📍 Ubicación: ${form.location}`,
+      // `🏠 Tipo de propiedad: ${form.propertyType}`,
+      // form.rooms && `🚪 Ambientes: ${form.rooms}`,
+      // form.area && `📐 Superficie total: ${form.area} m²`,
+      // form.observations && `📝 Observaciones: ${form.observations}`,
+      `Ubicación: ${form.location}`,
+      `Tipo de propiedad: ${form.propertyType}`,
+      form.rooms && `Ambientes: ${form.rooms}`,
+      form.area && `Superficie total: ${form.area} m²`,
+      form.observations && `Observaciones: ${form.observations}`,
       '',
       '*Mis datos de contacto*',
-      `👤 Nombre: ${form.name}`,
-      `📧 Email: ${form.email}`,
-      form.phone && `📞 Teléfono: ${form.phone}`,
+      // `👤 Nombre: ${form.name}`,
+      // `📧 Email: ${form.email}`,
+      // form.phone && `📞 Teléfono: ${form.phone}`,
+      `Nombre: ${form.name}`,
+      `Email: ${form.email}`,
+      form.phone && `Teléfono: ${form.phone}`,
     ].filter(Boolean).join('\n');
     window.open(`https://wa.me/${WHATSAPP_TASACIONES}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     toast.success('Abriendo WhatsApp con tu solicitud...');

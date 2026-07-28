@@ -87,13 +87,20 @@ export default function ContactPage() {
       '¡Hola! Les escribo desde la web de Inmobiliaria Manhattan.',
       '',
       '*CONSULTA GENERAL*',
-      `📝 ${form.message}`,
+      // Emojis 📝👤📞 comentados (27/07/2026): son caracteres "astral" (fuera del plano
+      // básico de Unicode) que WhatsApp Desktop/Web decodifican mal al precargar el texto
+      // vía link wa.me, mostrando "�" en su lugar. Se reemplazan por etiquetas de texto
+      // plano (ver mismo fix en PropertyDetail.jsx y Valuations.jsx).
+      // `📝 ${form.message}`,
+      `Mensaje: ${form.message}`,
       '',
       '*Mis datos de contacto*',
-      `👤 Nombre: ${form.name}`,
+      // `👤 Nombre: ${form.name}`,
+      `Nombre: ${form.name}`,
       // Email comentado: el input se quitó del formulario (26/07/2026), iría siempre vacío.
       // `📧 Email: ${form.email}`,
-      form.phone && `📞 Teléfono: ${form.phone}`,
+      // form.phone && `📞 Teléfono: ${form.phone}`,
+      form.phone && `Teléfono: ${form.phone}`,
     ].filter(Boolean).join('\n');
     window.open(`https://wa.me/${PHONE_SHAUL.wa}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     toast.success('Abriendo WhatsApp con tu consulta...');

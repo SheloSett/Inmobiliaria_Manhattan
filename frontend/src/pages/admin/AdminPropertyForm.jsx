@@ -340,7 +340,9 @@ export default function AdminPropertyForm() {
             <LocationPicker
               lat={form.lat}
               lng={form.lng}
-              address={[form.address, form.neighborhood, form.city, 'Argentina'].filter(Boolean).join(', ')}
+              address={form.address}
+              city={form.city}
+              neighborhood={form.neighborhood}
               onChange={(lat, lng) => setForm(prev => ({ ...prev, lat, lng }))}
             />
           </FormSection>

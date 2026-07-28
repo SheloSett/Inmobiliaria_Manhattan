@@ -23,7 +23,7 @@ const pinIcon = L.divIcon({
   iconAnchor: [15, 40],
 });
 
-export default function LocationPicker({ lat, lng, onChange, address = '' }) {
+export default function LocationPicker({ lat, lng, onChange, address = '', city = '', neighborhood = '' }) {
   const mapEl = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -83,10 +83,10 @@ export default function LocationPicker({ lat, lng, onChange, address = '' }) {
 
   // Geocodifica la dirección escrita y centra el marcador ahí (ayuda, editable después).
   const locateByAddress = async () => {
-    if (!address.trim()) { toast.error('Escribí primero la dirección'); return; }
+    if (!address.trim()) { toast.error('Escribí primero la dirección (calle y altura)'); return; }
     setLocating(true);
     try {
-      const coords = await geocodeAddress(address);
+      const coords = await geocodeAddress({ address, city, neighborhood });
       if (!coords) { toast.error('No se encontró esa dirección. Marcá el punto en el mapa a mano.'); return; }
       onChangeRef.current(Number(coords.lat.toFixed(6)), Number(coords.lng.toFixed(6)));
       mapRef.current?.setView([coords.lat, coords.lng], 16);
