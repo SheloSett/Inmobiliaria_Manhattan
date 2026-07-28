@@ -73,8 +73,13 @@ export default function PublicFooter() {
         <div className="flex flex-col md:flex-row md:flex-wrap md:justify-between gap-stack-lg">
           {/* Marca + descripción */}
           <div className="flex-1 min-w-[240px] flex flex-col items-center md:items-start gap-2 text-center md:text-left">
-            {/* Antes: "Manhattan" / descripción fijos; ahora c.brand / c.description */}
-            <span className="font-headline-xl font-bold text-on-primary">{c.brand}</span>
+            {/* Logo (si está cargado) + texto de marca, juntos. Antes: solo el texto. */}
+            <div className="flex items-center gap-3">
+              {c.logo && (
+                <img src={c.logo} alt={c.brand || 'Manhattan'} className="h-20 w-auto object-contain bg-on-primary/95 rounded-lg p-2" />
+              )}
+              <span className="font-headline-xl font-bold text-on-primary">{c.brand}</span>
+            </div>
             <p className="font-body-md text-body-md text-on-primary-container opacity-80 max-w-xs">
               {c.description}
             </p>

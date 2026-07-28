@@ -164,19 +164,38 @@ export default function AboutUs() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-gutter">
             {/* Antes: TEAM (array fijo); ahora c.team, editable desde el admin */}
-            {(c.team || []).map(({ name, role, img }, i) => (
-              <div key={`${name}-${i}`} className="group">
-                <div className="aspect-[3/4] rounded-lg overflow-hidden border border-outline-variant mb-4 bg-surface-container-high relative">
-                  <img
-                    alt={`${name} — ${role}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    src={img}
-                  />
-                </div>
-                <h4 className="font-headline-md text-headline-md text-primary">{name}</h4>
-                <span className="font-label-md text-label-md text-secondary">{role}</span>
-              </div>
-            ))}
+            {(c.team || []).map(({ name, role, img, whatsapp }, i) => {
+              // Tarjeta clickeable al WhatsApp del integrante (27/07/2026): si el admin
+              // cargó un número, tocar la tarjeta abre un chat directo con esa persona.
+              // Sin número, la tarjeta se muestra igual pero no es clickeable (como antes).
+              const phone = String(whatsapp || '').replace(/[^\d]/g, '');
+              const Wrapper = phone ? 'a' : 'div';
+              const wrapperProps = phone
+                ? {
+                    href: `https://wa.me/${phone}?text=${encodeURIComponent(`¡Hola ${name}! Vi la web de Inmobiliaria Manhattan y quiero hacer una consulta.`)}`,
+                    target: '_blank',
+                    rel: 'noopener,noreferrer',
+                  }
+                : {};
+              return (
+                <Wrapper key={`${name}-${i}`} {...wrapperProps} className={`group block ${phone ? 'cursor-pointer' : ''}`}>
+                  <div className="aspect-[3/4] rounded-lg overflow-hidden border border-outline-variant mb-4 bg-surface-container-high relative">
+                    <img
+                      alt={`${name} — ${role}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      src={img}
+                    />
+                    {phone && (
+                      <span className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="material-symbols-outlined text-[18px]">chat</span>
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-headline-md text-headline-md text-primary">{name}</h4>
+                  <span className="font-label-md text-label-md text-secondary">{role}</span>
+                </Wrapper>
+              );
+            })}
           </div>
         </section>
       </main>

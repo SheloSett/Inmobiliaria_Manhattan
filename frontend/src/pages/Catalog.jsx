@@ -176,6 +176,12 @@ function PropertyCard({ property }) {
               <span className="material-symbols-outlined text-[20px]">directions_car</span>
             </div>
           )}
+          {/* "Con llave": ícono de llave, solo si la propiedad la tiene (27/07/2026). */}
+          {property.hasKey && (
+            <div className="flex items-center gap-1 text-secondary" title="Con llave">
+              <span className="material-symbols-outlined text-[20px]">key</span>
+            </div>
+          )}
         </div>
       </Link>
     </article>

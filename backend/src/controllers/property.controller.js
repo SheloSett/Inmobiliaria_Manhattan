@@ -107,7 +107,7 @@ exports.create = async (req, res) => {
   try {
     const {
       title, description, price, currency, operation, type, status,
-      bedrooms, bathrooms, area, garage, address, city, neighborhood,
+      bedrooms, bathrooms, area, garage, hasKey, address, city, neighborhood,
       lat, lng, featured, amenityIds,
     } = req.body;
 
@@ -124,6 +124,7 @@ exports.create = async (req, res) => {
         bathrooms: bathrooms ? parseInt(bathrooms) : null,
         area: area ? parseFloat(area) : null,
         garage: garage === 'true' || garage === true,
+        hasKey: hasKey === 'true' || hasKey === true,
         address, city,
         neighborhood: neighborhood || null,
         lat: lat ? parseFloat(lat) : null,
@@ -168,7 +169,7 @@ exports.update = async (req, res) => {
     const id = Number(req.params.id);
     const {
       title, description, price, currency, operation, type, status,
-      bedrooms, bathrooms, area, garage, address, city, neighborhood,
+      bedrooms, bathrooms, area, garage, hasKey, address, city, neighborhood,
       lat, lng, featured, deleteImages, amenityIds, imageOrder,
     } = req.body;
 
@@ -188,6 +189,7 @@ exports.update = async (req, res) => {
     if (bathrooms !== undefined) data.bathrooms = bathrooms ? parseInt(bathrooms) : null;
     if (area !== undefined) data.area = area ? parseFloat(area) : null;
     if (garage !== undefined) data.garage = garage === 'true' || garage === true;
+    if (hasKey !== undefined) data.hasKey = hasKey === 'true' || hasKey === true;
     if (address !== undefined) data.address = address;
     if (city !== undefined) data.city = city;
     if (neighborhood !== undefined) data.neighborhood = neighborhood;

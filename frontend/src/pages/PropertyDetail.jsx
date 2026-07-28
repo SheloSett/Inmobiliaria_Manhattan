@@ -315,6 +315,7 @@ export default function PropertyDetail() {
     property.bedrooms != null && ['Dormitorios', property.bedrooms],
     property.bathrooms != null && ['Baños', property.bathrooms],
     ['Cochera', property.garage ? 'Sí' : 'No'],
+    ['Con llave', property.hasKey ? 'Sí' : 'No'],
     property.neighborhood && ['Barrio', property.neighborhood],
     ['Ciudad', property.city],
   ].filter(Boolean) : [];

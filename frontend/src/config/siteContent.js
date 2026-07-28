@@ -124,12 +124,16 @@ export const PAGES = [
           { key: 'name', label: 'Nombre', type: 'text', default: '' },
           { key: 'role', label: 'Cargo', type: 'text', default: '' },
           { key: 'img', label: 'Foto', type: 'image', default: '' },
+          // Campo agregado (27/07/2026): WhatsApp por integrante, para que al tocar su
+          // tarjeta en la web se abra un chat directo con esa persona. Opcional: si queda
+          // vacío, la tarjeta no es clickeable (se mantiene el comportamiento anterior).
+          { key: 'whatsapp', label: 'WhatsApp (con código de país, ej. 5491160479977)', type: 'text', default: '' },
         ],
         default: [
-          { name: 'Carlos V.', role: 'Director General', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBcvmyAp9ZFyKa9uDqPIyzwtGvbEkUTn8W6S_ch5oJnBIY98PhNVXqegzUfz-KAmv6aTTwBs_WucFzPHI3p9FiPcIrmm7uTl4XdNxSyrLMt7WsGDRbff3LiwrKsabPQuCifUHxs8w2ifPKUPXQKwlL_J-UWjC3OKyZN1PQOt04YdfW-9sKxVW6U_3qFxGRyzVHuSQV1EeU-x1cvjLSbU3ddhyXpKYbBxyASVLcCRCX6b6CBlmWRk83a' },
-          { name: 'Mariana L.', role: 'Directora Comercial', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBRMFE-Ad3zUNoBomnybBbUvhHG5BqpwhgL203y5cW_nhQRD25hEEXxxoUWkCplJTLd1nzOamG-OW6h63lgy-X2ZxGGg9dDpt_Qj9NinaWGntxWP3-laR_EVHgNpXxev-GwfRFBYcPf6WRW6swSa6DHA9Ne5c-OZ32RQbgFi2HwHjFOUib9HVTgus5kfjxGLzweBsIQNXOTZl-7d3xF0KGRzPJ1vB_oPHa1JihYYdSsNnN6u1WZ9DzU' },
-          { name: 'Javier M.', role: 'Asesor Senior', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBTN5Lzg57FSq-mNZ1Iq-OJZ121Ub5-mayQY3CoN42v-QJxGF3W4nk9qDrVjRQURWIkojhUXU43bnwWqUYDUY0S5ufqBYeXb5lo3pQew7WxNNKqy7vE3KblCzb7vNDM6Kzi3VnN2kTV0_6v-HMhnVBY4IknLBJr2c4FJwQ2pV4WrbKa5ioXmoAGjklIfM9Onv9nhX6oer-VD02VfyssQMbUVJOlKanow7lJbhQ_lrMzQstoqdRjCc51' },
-          { name: 'Dra. Elena S.', role: 'Asesoría Legal', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZq94pfg7HnZhTea_Ypk2Mrpaad_mEGkVbvvVTQOEU1Hy64m4lBILNWNl-CTwzmFu1UCuEs65AWx-5vKTd_RL2aY1zzzjkgvrzZRbBTRph5VUa1j0t1GXAEfKX-IcWJqwHfDhljTkqXVQpET7A23RKDy_y-oEfT7cbiUTgf5tVY3l6Kc1eKIVEuSZFliHWNt5gvchhdgcBxyysqIApbne_P4eR5dccHytgWCqW3s_X1bOwF9pHCeuM' },
+          { name: 'Carlos V.', role: 'Director General', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBcvmyAp9ZFyKa9uDqPIyzwtGvbEkUTn8W6S_ch5oJnBIY98PhNVXqegzUfz-KAmv6aTTwBs_WucFzPHI3p9FiPcIrmm7uTl4XdNxSyrLMt7WsGDRbff3LiwrKsabPQuCifUHxs8w2ifPKUPXQKwlL_J-UWjC3OKyZN1PQOt04YdfW-9sKxVW6U_3qFxGRyzVHuSQV1EeU-x1cvjLSbU3ddhyXpKYbBxyASVLcCRCX6b6CBlmWRk83a', whatsapp: '' },
+          { name: 'Mariana L.', role: 'Directora Comercial', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBRMFE-Ad3zUNoBomnybBbUvhHG5BqpwhgL203y5cW_nhQRD25hEEXxxoUWkCplJTLd1nzOamG-OW6h63lgy-X2ZxGGg9dDpt_Qj9NinaWGntxWP3-laR_EVHgNpXxev-GwfRFBYcPf6WRW6swSa6DHA9Ne5c-OZ32RQbgFi2HwHjFOUib9HVTgus5kfjxGLzweBsIQNXOTZl-7d3xF0KGRzPJ1vB_oPHa1JihYYdSsNnN6u1WZ9DzU', whatsapp: '' },
+          { name: 'Javier M.', role: 'Asesor Senior', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBTN5Lzg57FSq-mNZ1Iq-OJZ121Ub5-mayQY3CoN42v-QJxGF3W4nk9qDrVjRQURWIkojhUXU43bnwWqUYDUY0S5ufqBYeXb5lo3pQew7WxNNKqy7vE3KblCzb7vNDM6Kzi3VnN2kTV0_6v-HMhnVBY4IknLBJr2c4FJwQ2pV4WrbKa5ioXmoAGjklIfM9Onv9nhX6oer-VD02VfyssQMbUVJOlKanow7lJbhQ_lrMzQstoqdRjCc51', whatsapp: '' },
+          { name: 'Dra. Elena S.', role: 'Asesoría Legal', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZq94pfg7HnZhTea_Ypk2Mrpaad_mEGkVbvvVTQOEU1Hy64m4lBILNWNl-CTwzmFu1UCuEs65AWx-5vKTd_RL2aY1zzzjkgvrzZRbBTRph5VUa1j0t1GXAEfKX-IcWJqwHfDhljTkqXVQpET7A23RKDy_y-oEfT7cbiUTgf5tVY3l6Kc1eKIVEuSZFliHWNt5gvchhdgcBxyysqIApbne_P4eR5dccHytgWCqW3s_X1bOwF9pHCeuM', whatsapp: '' },
         ],
       },
     ],
@@ -183,6 +187,9 @@ export const PAGES = [
     label: 'Footer',
     icon: 'border_bottom',
     fields: [
+      // Logo de la inmobiliaria (28/07/2026). Se usa en el navbar y el footer, JUNTO al
+      // texto de marca (no lo reemplaza). Si queda vacío, se muestra solo el texto.
+      { key: 'logo', label: 'Logo (barra superior y footer)', type: 'image', default: '' },
       { key: 'brand', label: 'Nombre / Marca', type: 'text', default: 'Manhattan' },
       { key: 'description', label: 'Descripción', type: 'textarea', default: 'Negocios Inmobiliarios. Liderazgo y confianza en el mercado de alta gama.' },
       // Email de contacto del footer (nueva columna "Contacto"). Por defecto usa el

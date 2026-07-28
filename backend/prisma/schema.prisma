@@ -34,6 +34,9 @@ model Property {
   bathrooms     Int?
   area          Float?
   garage        Boolean       @default(false)
+  // hasKey ("con llave"): indica que la inmobiliaria tiene la llave para mostrar la
+  // propiedad. Agregado el 27/07/2026 (migración property_has_key).
+  hasKey        Boolean       @default(false)
   address       String
   city          String
   neighborhood  String?

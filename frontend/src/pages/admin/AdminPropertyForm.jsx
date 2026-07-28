@@ -49,7 +49,7 @@ const STATUS_OPTIONS = [
 const EMPTY_FORM = {
   title: '', description: '', price: '', currency: 'USD',
   operation: 'SALE', type: 'APARTMENT', status: 'AVAILABLE',
-  bedrooms: '', bathrooms: '', area: '', garage: false,
+  bedrooms: '', bathrooms: '', area: '', garage: false, hasKey: false,
   address: '', city: '', neighborhood: '', featured: false,
   // lat/lng se marcan en el mapa (LocationPicker); vacíos = sin ubicación exacta.
   lat: '', lng: '',
@@ -117,6 +117,7 @@ export default function AdminPropertyForm() {
           bathrooms: p.bathrooms ?? '',
           area: p.area ?? '',
           garage: p.garage || false,
+          hasKey: p.hasKey || false,
           address: p.address,
           city: p.city,
           neighborhood: p.neighborhood || '',
@@ -332,6 +333,16 @@ export default function AdminPropertyForm() {
                 <input id="neighborhood" name="neighborhood" type="text" value={form.neighborhood} onChange={handleChange}
                   className={INPUT_CLASS} placeholder="Palermo" />
               </div>
+              {/* "Con llave": campo propio de la propiedad (hasKey). Indica que la
+                  inmobiliaria tiene la llave para mostrarla. Movido acá desde Amenities
+                  a pedido del cliente (28/07/2026): es un dato operativo de la propiedad,
+                  no una característica/amenity. */}
+              <label className="flex items-center gap-2 cursor-pointer md:col-span-2">
+                <input type="checkbox" name="hasKey" checked={form.hasKey} onChange={handleChange}
+                  className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" />
+                <span aria-hidden="true" className="material-symbols-outlined text-[18px] text-on-surface-variant">key</span>
+                <span className="font-body-md text-body-md text-on-surface">Con llave</span>
+              </label>
             </div>
           </FormSection>
 
@@ -520,6 +531,15 @@ export default function AdminPropertyForm() {
                   className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" />
                 <span className="font-body-md text-body-md text-on-surface">Cochera</span>
               </label>
+              {/* "Con llave" (hasKey) movido a la sección "Información General" a pedido
+                  del cliente (28/07/2026): no eliminado, solo comentado según regla del
+                  proyecto. Checkbox original que estaba acá:
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="hasKey" checked={form.hasKey} onChange={handleChange}
+                  className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" />
+                <span className="font-body-md text-body-md text-on-surface">Con llave</span>
+              </label>
+              */}
               {allAmenities.map((a) => (
                 <label key={a.id} className="flex items-center gap-2 cursor-pointer">
                   <input

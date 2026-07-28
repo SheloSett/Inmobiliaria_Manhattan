@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSiteContent } from '../hooks/useSiteContent';
 
 // Navbar único para todas las páginas públicas (Manhattan Prestige Design System).
 // Centralizado acá para garantizar que el navbar sea idéntico en todo el sitio.
+// El logo (editable desde Ajustes → Contenido → Footer) se muestra JUNTO al texto de
+// marca; si no hay logo cargado, queda solo el texto (comportamiento anterior).
 const NAV_LINKS = [
   { label: 'Inicio', to: '/' },
   { label: 'Propiedades', to: '/propiedades' },
@@ -16,11 +19,20 @@ const INACTIVE_CLASS = 'font-label-md text-label-md text-on-surface-variant hove
 
 export default function PublicNavbar({ active }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const branding = useSiteContent('footer'); // logo + marca
 
   return (
     <header className="bg-surface-container-lowest border-b border-outline-variant shadow-sm w-full sticky top-0 z-50">
-      <div className="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-4 max-w-[1280px] mx-auto">
-        <Link className="font-headline-xl text-primary font-bold tracking-tight" to="/">Manhattan</Link>
+      {/* py-2 (antes py-4): se reduce el padding vertical para poder agrandar el logo
+          sin que el navbar crezca de alto (pedido 28/07/2026). */}
+      <div className="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-2 max-w-[1280px] mx-auto">
+        {/* Logo (si está cargado) + texto de marca, juntos. */}
+        <Link className="flex items-center gap-3" to="/">
+          {branding.logo && (
+            <img src={branding.logo} alt={branding.brand || 'Manhattan'} className="h-20 w-auto object-contain" />
+          )}
+          <span className="font-headline-xl text-primary font-bold tracking-tight">{branding.brand || 'Manhattan'}</span>
+        </Link>
         <nav className="hidden md:flex items-center space-x-gutter">
           {NAV_LINKS.map(({ label, to }) => (
             <Link key={to} className={active === label ? ACTIVE_CLASS : INACTIVE_CLASS} to={to}>
