@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // MessageSquare y BarChart3 comentados: eran los íconos de Consultas y Reportes (ver abajo)
 import { LayoutDashboard, Building2, Tags, ChevronDown, /* MessageSquare, BarChart3, */ Settings, LogOut, Menu, X } from 'lucide-react';
@@ -35,6 +35,7 @@ const linkClass = ({ isActive }) =>
 function NavItem({ item }) {
   const { to, icon: Icon, label, children } = item;
   const [open, setOpen] = useState(true);
+  const location = useLocation();
 
   if (!children) {
     return (
@@ -45,20 +46,34 @@ function NavItem({ item }) {
     );
   }
 
+  // Antes la fila entera (label + flecha) era un único <NavLink>: en mobile, tocar la
+  // flecha para desplegar el submenú también navegaba a Propiedades Y cerraba el
+  // drawer (el <nav> padre lo cierra al detectar cualquier click adentro) — había que
+  // reabrir el menú para recién ahí ver "Catálogos" ya desplegado. Ahora son dos zonas
+  // independientes: el link navega, el botón de la flecha solo pliega/despliega
+  // (stopPropagation para no navegar ni cerrar el drawer). Fix 04/08/2026.
+  const isActive = location.pathname.startsWith(to);
+  const rowClass = isActive
+    ? 'bg-secondary text-on-secondary'
+    : 'text-on-primary-container hover:bg-primary-container hover:text-on-primary';
+
   return (
     <div>
-      {/* Un solo rectángulo clickeable: navega Y abre/cierra la sub-lista. La flecha
-          va dentro del mismo botón, solo como indicador (no hace falta tocarla). */}
-      <NavLink
-        to={to}
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className={linkClass}
-      >
-        <Icon size={18} />
-        {label}
-        <ChevronDown size={16} className={`ml-auto transition-transform duration-200 ${open ? '' : '-rotate-90'}`} />
-      </NavLink>
+      <div className={`flex items-stretch rounded transition ${rowClass}`}>
+        <Link to={to} className="flex-1 flex items-center gap-3 px-4 py-3 font-label-md text-label-md min-w-0">
+          <Icon size={18} />
+          {label}
+        </Link>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+          aria-expanded={open}
+          aria-label={open ? `Contraer ${label}` : `Desplegar ${label}`}
+          className="px-4 flex items-center flex-shrink-0"
+        >
+          <ChevronDown size={16} className={`transition-transform duration-200 ${open ? '' : '-rotate-90'}`} />
+        </button>
+      </div>
 
       {open && (
         <div className="mt-1 ml-5 pl-4 border-l border-primary-container space-y-1">
