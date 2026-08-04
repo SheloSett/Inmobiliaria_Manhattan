@@ -250,14 +250,14 @@ export default function AdminPropertyForm() {
 
   if (fetching) {
     return (
-      <div className="bg-surface min-h-full p-gutter flex items-center justify-center">
+      <div className="bg-surface min-h-screen p-gutter flex items-center justify-center">
         <p className="font-label-md text-label-md text-on-surface-variant">Cargando propiedad...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-surface min-h-full">
+    <div className="bg-surface min-h-screen">
       <main className="p-gutter max-w-container-max mx-auto w-full">
 
         {/* Encabezado con flecha de volver */}

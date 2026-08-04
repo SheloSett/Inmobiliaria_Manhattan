@@ -84,7 +84,7 @@ export default function AdminDashboard() {
   const totalLiveViewers = live.reduce((sum, p) => sum + p.viewers, 0);
 
   return (
-    <div className="p-margin-mobile md:p-margin-desktop bg-surface flex flex-col gap-stack-lg min-h-full">
+    <div className="p-margin-mobile md:p-margin-desktop bg-surface flex flex-col gap-stack-lg min-h-screen">
 
       {/* Header */}
       <header className="flex justify-between items-end border-b border-outline-variant pb-unit mb-stack-md">

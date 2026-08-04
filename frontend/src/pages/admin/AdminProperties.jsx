@@ -454,7 +454,7 @@ export default function AdminProperties() {
   const thumbnailSrc = (p) => propertyThumbnail(p.images);
 
   return (
-    <div className="bg-background min-h-full p-6 md:p-10">
+    <div className="bg-background min-h-screen p-6 md:p-10">
 
       {/* ---- Modales ---- */}
       {/* COMENTADO (15/07/2026): el modal de creación/edición fue reemplazado por la

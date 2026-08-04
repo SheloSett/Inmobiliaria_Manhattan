@@ -95,8 +95,15 @@ export default function AdminLayout() {
   const handleLogout = () => { logout(); navigate('/admin/login'); };
 
   // bg-gray-100 reemplazado por token del design system Manhattan Prestige
+  //
+  // Fix scroll en mobile (04/08/2026): antes el shell era h-screen con <main
+  // overflow-y-auto> adentro — dos áreas de scroll superpuestas (la página y el panel).
+  // En mobile Safari eso hace que el swipe no sepa a cuál agarrar y cueste varios
+  // intentos llegar al principio/final. Ahora la página scrollea normal (min-h-screen,
+  // sin overflow-y-auto en <main>) y el sidebar queda fijo por su cuenta: "fixed" en
+  // mobile (ya lo era, para el drawer) y "sticky" en desktop.
   return (
-    <div className="flex h-screen bg-surface-container-low">
+    <div className="flex min-h-screen bg-surface-container-low">
       {/* Fondo oscuro detrás del drawer (solo mobile, al tocar cierra) */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={closeSidebar} aria-hidden="true" />
@@ -104,7 +111,7 @@ export default function AdminLayout() {
 
       {/* Sidebar: drawer deslizable en mobile (fixed), estático en desktop (lg:static). */}
       <aside
-        className={`w-64 bg-primary text-white flex flex-col fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:static lg:z-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`w-64 bg-primary text-white flex flex-col fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:z-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="p-6 border-b border-primary-container flex items-start justify-between">
           <div>
@@ -137,13 +144,13 @@ export default function AdminLayout() {
       {/* Columna de contenido */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra superior con hamburguesa (solo mobile) */}
-        <header className="lg:hidden bg-primary text-on-primary flex items-center gap-3 px-4 h-14 shrink-0">
+        <header className="lg:hidden sticky top-0 z-30 bg-primary text-on-primary flex items-center gap-3 px-4 h-14 shrink-0">
           <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú">
             <Menu size={24} />
           </button>
           <span className="font-headline-md text-headline-md text-on-primary">Manhattan</span>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1">
           <Outlet />
         </main>
       </div>

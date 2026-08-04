@@ -159,7 +159,7 @@ export default function AdminCatalogs() {
   const { operations, propertyTypes, amenities, loading, reload } = useCatalogs();
 
   return (
-    <div className="bg-background min-h-full p-6 md:p-10">
+    <div className="bg-background min-h-screen p-6 md:p-10">
       {/* Encabezado de página (mismo estilo que Gestión de Propiedades) */}
       <div className="mb-6 max-w-screen-xl mx-auto">
         <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">Catálogos</h1>

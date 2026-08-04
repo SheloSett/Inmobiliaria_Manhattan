@@ -297,11 +297,11 @@ export default function Catalog() {
           </p>
         </section>
 
-        {/* Filter Bar: queda fijo (sticky) al hacer scroll, justo debajo del navbar.
-            top-[97px] = alto del navbar (antes decía 73px, de cuando el navbar era más
-            bajo; con ese valor el panel se pegaba DETRÁS del navbar y se veía desaparecer).
-            Fix 28/07/2026. */}
-        <section className="py-stack-sm sticky top-[97px] z-40 bg-background">
+        {/* Filter Bar: ANTES quedaba fijo (sticky top-[97px]) debajo del navbar al hacer
+            scroll (fix 28/07/2026 de un bug de superposición con el navbar). El cliente
+            pidió sacar el sticky (04/08/2026): ahora scrollea normal con el resto de la
+            página, sin quedarse pegado en pantalla. */}
+        <section className="py-stack-sm bg-background">
           <form
             className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-4 flex flex-wrap gap-4 items-end"
             onSubmit={handleFilter}

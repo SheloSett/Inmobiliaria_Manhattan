@@ -287,7 +287,7 @@ export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('perfil');
 
   return (
-    <div className="bg-background min-h-full">
+    <div className="bg-background min-h-screen">
       {/* Encabezado de página */}
       <div className="px-6 md:px-16 pt-8 md:pt-12 pb-4 max-w-screen-xl mx-auto">
         <h1 className="font-headline-xl text-headline-xl text-primary mb-2">Ajustes del Sistema</h1>
