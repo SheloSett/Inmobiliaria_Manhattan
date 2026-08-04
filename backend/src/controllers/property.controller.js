@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const presence = require('../services/presence.service');
 
 const prisma = new PrismaClient();
 
@@ -97,7 +98,57 @@ exports.getById = async (req, res) => {
       },
     });
     if (!property) return res.status(404).json({ error: 'Propiedad no encontrada' });
+    // Loguea la vista solo cuando viene de la ficha pública (?src=public). El admin
+    // llama a este mismo endpoint para precargar el formulario de edición y esa
+    // carga no debe contar como una vista real. Agregado 28/07/2026 para las
+    // métricas de "propiedades más vistas" del dashboard.
+    if (req.query.src === 'public') {
+      await prisma.propertyEvent.create({ data: { propertyId: property.id, type: 'VIEW' } });
+    }
     res.json(await withCatalogLabels(property));
+  } catch {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+};
+
+// Heartbeat de presencia (28/07/2026): la ficha pública lo llama cada ~20s mientras
+// está abierta, para que el dashboard admin pueda mostrar "quién está viendo qué
+// propiedad ahora". Público (sin auth), no toca la base de datos.
+exports.trackHeartbeat = (req, res) => {
+  const propertyId = Number(req.params.id);
+  const sessionId = String(req.body?.sessionId || '');
+  if (!sessionId) return res.status(400).json({ error: 'Falta sessionId' });
+  presence.ping(propertyId, sessionId);
+  res.status(204).end();
+};
+
+// Clic en "Consultar por WhatsApp" (botón rápido o submit del formulario) desde la
+// ficha pública. Público (sin auth), alimenta "propiedades más consultadas" en el
+// dashboard admin. Agregado 28/07/2026.
+exports.trackContactClick = async (req, res) => {
+  try {
+    await prisma.propertyEvent.create({ data: { propertyId: Number(req.params.id), type: 'CONTACT_CLICK' } });
+    res.status(204).end();
+  } catch {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+};
+
+// Propiedades siendo vistas ahora mismo, para el panel "Viendo ahora" del dashboard
+// admin. Requiere auth. Agregado 28/07/2026.
+exports.getLive = async (req, res) => {
+  try {
+    const live = presence.getLive();
+    if (live.length === 0) return res.json([]);
+    const properties = await prisma.property.findMany({
+      where: { id: { in: live.map((l) => l.propertyId) } },
+      select: { id: true, title: true, address: true, city: true },
+    });
+    const byId = Object.fromEntries(properties.map((p) => [p.id, p]));
+    const result = live
+      .filter((l) => byId[l.propertyId])
+      .map((l) => ({ ...byId[l.propertyId], viewers: l.viewers }));
+    res.json(result);
   } catch {
     res.status(500).json({ error: 'Error del servidor' });
   }

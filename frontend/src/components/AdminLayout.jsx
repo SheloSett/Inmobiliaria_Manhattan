@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // MessageSquare y BarChart3 comentados: eran los íconos de Consultas y Reportes (ver abajo)
-import { LayoutDashboard, Building2, Tags, ChevronDown, /* MessageSquare, BarChart3, */ Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Building2, Tags, ChevronDown, /* MessageSquare, BarChart3, */ Settings, LogOut, Menu, X } from 'lucide-react';
 
 const navItems = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -85,19 +85,40 @@ function NavItem({ item }) {
 export default function AdminLayout() {
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
+  // Drawer del sidebar en mobile (28/07/2026): en pantallas chicas el sidebar fijo de
+  // 256px se comía casi toda la pantalla y aplastaba el contenido. Ahora en mobile es un
+  // panel deslizable (hamburguesa) y el contenido ocupa todo el ancho; en desktop (lg+)
+  // el sidebar queda estático como siempre.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = () => setSidebarOpen(false);
 
   const handleLogout = () => { logout(); navigate('/admin/login'); };
 
   // bg-gray-100 reemplazado por token del design system Manhattan Prestige
   return (
     <div className="flex h-screen bg-surface-container-low">
-      <aside className="w-64 bg-primary text-white flex flex-col">
-        <div className="p-6 border-b border-primary-container">
-          {/* font-serif y text-gold reemplazados por Manhattan Prestige Design System */}
-          <h1 className="font-headline-md text-headline-md text-on-primary">Manhattan</h1>
-          <p className="text-xs text-on-primary-container mt-1">Inmobiliaria</p>
+      {/* Fondo oscuro detrás del drawer (solo mobile, al tocar cierra) */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={closeSidebar} aria-hidden="true" />
+      )}
+
+      {/* Sidebar: drawer deslizable en mobile (fixed), estático en desktop (lg:static). */}
+      <aside
+        className={`w-64 bg-primary text-white flex flex-col fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:static lg:z-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <div className="p-6 border-b border-primary-container flex items-start justify-between">
+          <div>
+            {/* font-serif y text-gold reemplazados por Manhattan Prestige Design System */}
+            <h1 className="font-headline-md text-headline-md text-on-primary">Manhattan</h1>
+            <p className="text-xs text-on-primary-container mt-1">Inmobiliaria</p>
+          </div>
+          {/* Cerrar el drawer (solo mobile) */}
+          <button className="lg:hidden text-on-primary-container hover:text-on-primary -mr-1" onClick={closeSidebar} aria-label="Cerrar menú">
+            <X size={22} />
+          </button>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+        {/* onClick cierra el drawer al tocar cualquier link (mobile); en desktop no hace nada. */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto" onClick={closeSidebar}>
           {navItems.map((item) => (
             <NavItem key={item.to} item={item} />
           ))}
@@ -112,9 +133,20 @@ export default function AdminLayout() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
+
+      {/* Columna de contenido */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Barra superior con hamburguesa (solo mobile) */}
+        <header className="lg:hidden bg-primary text-on-primary flex items-center gap-3 px-4 h-14 shrink-0">
+          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú">
+            <Menu size={24} />
+          </button>
+          <span className="font-headline-md text-headline-md text-on-primary">Manhattan</span>
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

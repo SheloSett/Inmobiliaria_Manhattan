@@ -46,6 +46,9 @@ model Property {
   images        PropertyImage[]
   contacts      Contact[]
   amenities     Amenity[]     @relation("PropertyAmenities")
+  // events: log de vistas (VIEW) y clics a WhatsApp (CONTACT_CLICK) de la ficha
+  // pública. Agregado 28/07/2026 para las métricas del dashboard admin.
+  events        PropertyEvent[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -100,6 +103,20 @@ model Contact {
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
+}
+
+// Log de eventos de la ficha pública de una propiedad: una fila por vista (VIEW) y
+// por clic en "Consultar por WhatsApp" (CONTACT_CLICK, tanto el botón rápido como el
+// submit del formulario). Con fecha (no un contador acumulado) para poder filtrar
+// por período en el dashboard admin (ej. "últimos 30 días"). Agregado 28/07/2026.
+model PropertyEvent {
+  id         Int      @id @default(autoincrement())
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type       String   // "VIEW" | "CONTACT_CLICK"
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId, type, createdAt])
 }
 
 model SiteSettings {

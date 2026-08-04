@@ -511,8 +511,11 @@ export default function AdminProperties() {
       </div>
 
       {/* ---- Tabla de propiedades ---- */}
+      {/* La tabla se oculta en mobile (hidden md:table): sus 5 columnas no entran y se
+          cortaban Estado y Acciones (el botón Editar quedaba fuera de pantalla). En mobile
+          se muestra la lista de tarjetas de más abajo (md:hidden). (28/07/2026) */}
       <div className="bg-surface-container-lowest rounded-xl border border-outline-variant max-w-screen-xl mx-auto overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <table className="hidden md:table w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-outline-variant bg-surface-container-low">
               <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-20">Imagen</th>
@@ -627,6 +630,82 @@ export default function AdminProperties() {
             ))}
           </tbody>
         </table>
+
+        {/* ---- Lista de tarjetas (solo mobile) ---- */}
+        <div className="md:hidden divide-y divide-outline-variant">
+          {loading && (
+            <div className="py-16 flex flex-col items-center gap-2 text-on-surface-variant">
+              <span className="material-symbols-outlined text-[36px] text-outline">autorenew</span>
+              <p className="font-label-md text-label-md">Cargando propiedades...</p>
+            </div>
+          )}
+
+          {!loading && paginated.length === 0 && (
+            <div className="py-16 flex flex-col items-center gap-2 text-on-surface-variant text-center px-4">
+              <span className="material-symbols-outlined text-[40px] text-outline">domain_disabled</span>
+              <p className="font-label-md text-label-md">
+                {search ? 'Sin resultados para esa búsqueda.' : 'No hay propiedades publicadas aún.'}
+              </p>
+              {!search && (
+                <button
+                  onClick={() => navigate('/admin/properties/new')}
+                  className="mt-2 text-primary font-label-md text-sm hover:underline flex items-center gap-1"
+                >
+                  <Plus size={14} /> Publicar la primera
+                </button>
+              )}
+            </div>
+          )}
+
+          {!loading && paginated.map(prop => (
+            <div key={prop.id} className="p-4 flex gap-3">
+              {/* Thumbnail */}
+              <div className="w-20 h-20 rounded-lg overflow-hidden border border-outline-variant bg-surface-container flex items-center justify-center flex-shrink-0">
+                {thumbnailSrc(prop) ? (
+                  <img src={thumbnailSrc(prop)} alt={prop.title} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-outline-variant text-[28px]">image</span>
+                )}
+              </div>
+
+              {/* Info + acciones */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-label-md text-[15px] text-primary line-clamp-2 leading-snug">{prop.title}</div>
+                  <div className="flex-shrink-0"><StatusBadge status={prop.status} /></div>
+                </div>
+                <div className="text-xs text-on-surface-variant flex items-start gap-1 mt-1">
+                  <span className="material-symbols-outlined text-[14px] mt-[1px]">location_on</span>
+                  <span className="line-clamp-1">{prop.address}{prop.neighborhood ? `, ${prop.neighborhood}` : ''}</span>
+                </div>
+                <div className="text-xs text-outline mt-1 font-label-md">
+                  {prop.typeLabel ?? prop.type}
+                  {' · '}{prop.operationLabel ?? prop.operation}
+                  {prop.bedrooms ? ` · ${prop.bedrooms} dorm.` : ''}
+                  {prop.area ? ` · ${prop.area} m²` : ''}
+                </div>
+                <div className="font-price-display text-[16px] text-primary mt-1">{formatPrice(prop)}</div>
+
+                {/* Acciones: Editar (prominente) + Eliminar */}
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => navigate(`/admin/properties/${prop.id}/edit`)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-colors"
+                  >
+                    <Edit2 size={16} /> Editar
+                  </button>
+                  <button
+                    onClick={() => setDeleteProp(prop)}
+                    className="p-2 rounded border border-outline-variant text-on-surface-variant hover:text-secondary hover:border-secondary transition-colors"
+                    title="Eliminar"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* ---- Paginación ---- */}
         {!loading && filtered.length > 0 && (

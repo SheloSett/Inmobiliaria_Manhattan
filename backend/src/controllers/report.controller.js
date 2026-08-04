@@ -2,8 +2,33 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+// Top 5 propiedades por cantidad de eventos de un tipo (VIEW o CONTACT_CLICK) desde
+// `since`, con el título/dirección resuelto. Usado por "Propiedades más vistas" y
+// "Propiedades más consultadas" del dashboard admin. Agregado 28/07/2026.
+async function topByEventType(type, since) {
+  const grouped = await prisma.propertyEvent.groupBy({
+    by: ['propertyId'],
+    where: { type, createdAt: { gte: since } },
+    _count: true,
+    orderBy: { _count: { propertyId: 'desc' } },
+    take: 5,
+  });
+  if (grouped.length === 0) return [];
+  const properties = await prisma.property.findMany({
+    where: { id: { in: grouped.map((g) => g.propertyId) } },
+    select: { id: true, title: true, address: true, city: true },
+  });
+  const byId = Object.fromEntries(properties.map((p) => [p.id, p]));
+  return grouped
+    .filter((g) => byId[g.propertyId])
+    .map((g) => ({ ...byId[g.propertyId], count: g._count }));
+}
+
 exports.getDashboard = async (req, res) => {
   try {
+    const days = Number(req.query.days) || 30;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
     const [
       totalProperties,
       availableProperties,
@@ -15,6 +40,8 @@ exports.getDashboard = async (req, res) => {
       recentContacts,
       propertiesByType,
       propertiesByOperation,
+      topViewed,
+      topConsulted,
     ] = await Promise.all([
       prisma.property.count(),
       prisma.property.count({ where: { status: 'AVAILABLE' } }),
@@ -30,12 +57,16 @@ exports.getDashboard = async (req, res) => {
       }),
       prisma.property.groupBy({ by: ['type'], _count: true }),
       prisma.property.groupBy({ by: ['operation'], _count: true }),
+      topByEventType('VIEW', since),
+      topByEventType('CONTACT_CLICK', since),
     ]);
 
     res.json({
       properties: { total: totalProperties, available: availableProperties, reserved: reservedProperties, sold: soldProperties, rented: rentedProperties },
       contacts: { total: totalContacts, unread: unreadContacts, recent: recentContacts },
       charts: { byType: propertiesByType, byOperation: propertiesByOperation },
+      topViewed,
+      topConsulted,
     });
   } catch (err) {
     console.error(err);

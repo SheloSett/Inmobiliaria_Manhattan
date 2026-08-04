@@ -45,33 +45,47 @@ function CatalogRow({ item, kind, hasIcon, onChanged }) {
     }
   };
 
+  // Botones extraídos para reusarlos en el layout responsive (28/07/2026): en mobile la
+  // fila se apila (nombre arriba; selector de ícono + botones abajo) para no desbordar
+  // horizontalmente; en sm+ queda todo en una sola línea como antes.
+  const saveBtn = (
+    <button
+      type="button"
+      onClick={save}
+      disabled={!dirty || saving}
+      className="px-3 py-2 rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+    >
+      Guardar
+    </button>
+  );
+  const delBtn = (
+    <button
+      type="button"
+      onClick={remove}
+      title="Eliminar"
+      className="p-2 text-on-surface-variant hover:text-secondary hover:bg-secondary-fixed rounded transition-colors flex-shrink-0"
+    >
+      <span className="material-symbols-outlined text-[20px]">delete</span>
+    </button>
+  );
+
   return (
-    <div className="flex items-center gap-2 py-2">
-      {hasIcon && (
-        <div className="w-10 h-10 rounded bg-surface-container flex items-center justify-center flex-shrink-0" title={icon}>
-          <span className="material-symbols-outlined text-[22px] text-primary">{icon || 'category'}</span>
-        </div>
-      )}
-      <input className={`${INPUT} flex-1`} value={label} onChange={(e) => setLabel(e.target.value)} />
-      {hasIcon && (
-        <IconPicker value={icon} onChange={setIcon} className="w-52 flex-shrink-0" />
-      )}
-      <button
-        type="button"
-        onClick={save}
-        disabled={!dirty || saving}
-        className="px-3 py-2 rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Guardar
-      </button>
-      <button
-        type="button"
-        onClick={remove}
-        title="Eliminar"
-        className="p-2 text-on-surface-variant hover:text-secondary hover:bg-secondary-fixed rounded transition-colors"
-      >
-        <span className="material-symbols-outlined text-[20px]">delete</span>
-      </button>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-2">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        {hasIcon && (
+          <div className="w-10 h-10 rounded bg-surface-container flex items-center justify-center flex-shrink-0" title={icon}>
+            <span className="material-symbols-outlined text-[22px] text-primary">{icon || 'category'}</span>
+          </div>
+        )}
+        <input className={`${INPUT} flex-1 min-w-0`} value={label} onChange={(e) => setLabel(e.target.value)} />
+      </div>
+      <div className="flex items-center gap-2">
+        {hasIcon && (
+          <IconPicker value={icon} onChange={setIcon} className="flex-1 min-w-0 sm:w-52 sm:flex-none" />
+        )}
+        {saveBtn}
+        {delBtn}
+      </div>
     </div>
   );
 }
@@ -119,16 +133,17 @@ function CatalogSection({ title, subtitle, kind, items, hasIcon, onChanged }) {
         )}
       </div>
 
-      {/* Alta */}
-      <form onSubmit={add} className="flex items-center gap-2 mt-4 pt-4 border-t border-outline-variant">
+      {/* Alta. En mobile se apila (selector de ícono, nombre y botón, cada uno a lo ancho);
+          en sm+ queda en una sola línea. */}
+      <form onSubmit={add} className="flex flex-col sm:flex-row sm:items-center gap-2 mt-4 pt-4 border-t border-outline-variant">
         {hasIcon && (
-          <IconPicker value={newIcon} onChange={setNewIcon} className="w-52 flex-shrink-0" />
+          <IconPicker value={newIcon} onChange={setNewIcon} className="w-full sm:w-52 sm:flex-none" />
         )}
-        <input className={`${INPUT} flex-1`} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={`Agregar ${title.toLowerCase()}...`} />
+        <input className={`${INPUT} flex-1 min-w-0`} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={`Agregar ${title.toLowerCase()}...`} />
         <button
           type="submit"
           disabled={!newLabel.trim() || adding}
-          className="flex items-center gap-1 px-4 py-2.5 rounded bg-secondary text-on-secondary font-label-md text-label-md hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-1 px-4 py-2.5 rounded bg-secondary text-on-secondary font-label-md text-label-md hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
         >
           <span className="material-symbols-outlined text-[20px]">add</span>
           Agregar

@@ -44,14 +44,26 @@ export default function PropertyCard({ property }) {
             <span className="material-symbols-outlined text-[48px] text-outline">image_not_supported</span>
           </div>
         )}
-        {/* Badge de operación */}
-        <div className={`absolute top-4 left-4 px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded ${opStyle}`}>
-          {opLabel}
+        {/* Badges arriba a la IZQUIERDA: operación + estado (apilados). El estado se movió
+            acá (antes iba arriba a la derecha) para dejar libre la esquina superior derecha
+            para el sello "SIN LLAVE" (28/07/2026). */}
+        <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
+          <div className={`px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded ${opStyle}`}>
+            {opLabel}
+          </div>
+          {property.status !== 'AVAILABLE' && (
+            <div className="bg-surface/90 backdrop-blur-sm text-on-surface px-2 py-1 font-label-md text-[11px] uppercase tracking-wider rounded">
+              {STATUS_LABELS[property.status]}
+            </div>
+          )}
         </div>
-        {/* Badge de estado (solo si no está disponible) */}
-        {property.status !== 'AVAILABLE' && (
-          <div className="absolute top-4 right-4 bg-surface/90 backdrop-blur-sm text-on-surface px-2 py-1 font-label-md text-[11px] uppercase tracking-wider rounded">
-            {STATUS_LABELS[property.status]}
+        {/* Etiqueta "SIN LLAVE": cuando la propiedad NO tiene llave, se muestra en la esquina
+            superior derecha con el MISMO estilo plano que las etiquetas de la izquierda
+            (operación/estado): sin rotación, sin borde ni sombra (28/07/2026). Cuando SÍ
+            tiene llave, se sigue mostrando el ícono de llave en la fila de specs. */}
+        {!property.hasKey && (
+          <div className="absolute top-4 right-4 bg-secondary text-on-secondary px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded">
+            Sin llave
           </div>
         )}
       </div>
