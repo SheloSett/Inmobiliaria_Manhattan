@@ -280,11 +280,14 @@ export default function AdminContent() {
                                   </div>
                                 ))}
                               </div>
-                              {/* Eliminar integrante */}
+                              {/* Eliminar ítem. El título sale de itemLabel (mismo criterio
+                                  que el botón "Agregar" de abajo): antes estaba fijo en
+                                  "Eliminar integrante" y se veía igual en todas las listas
+                                  — testimonios, beneficios, redes, preguntas (10/08/2026). */}
                               <button
                                 type="button"
                                 onClick={() => removeListItem(field.key, index)}
-                                title="Eliminar integrante"
+                                title={`Eliminar ${field.itemLabel?.toLowerCase() || 'ítem'}`}
                                 className="self-start p-2 text-on-surface-variant hover:text-secondary hover:bg-secondary-fixed rounded transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[20px]">delete</span>

@@ -11,6 +11,7 @@ const SITE_LINKS = [
   { label: 'Tasaciones', to: '/tasaciones', icon: 'request_quote' },
   { label: 'Nosotros', to: '/nosotros', icon: 'groups' },
   { label: 'Contacto', to: '/contacto', icon: 'mail' },
+  { label: 'Postulaciones', to: '/postulaciones', icon: 'badge' },
   { label: 'Política de Privacidad', to: '/privacidad', icon: 'privacy_tip' },
   { label: 'Términos y Condiciones', to: '/terminos', icon: 'gavel' },
   { label: 'Centro de Ayuda', to: '/ayuda', icon: 'help' },

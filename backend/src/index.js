@@ -10,6 +10,8 @@ const reportRoutes = require('./routes/report.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const contentRoutes = require('./routes/content.routes');
 const catalogRoutes = require('./routes/catalog.routes');
+// Postulaciones laborales (con CV) y solicitudes para abrir una sucursal (10/08/2026).
+const applicationRoutes = require('./routes/application.routes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -25,6 +27,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/catalogs', catalogRoutes);
+app.use('/api/applications', applicationRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

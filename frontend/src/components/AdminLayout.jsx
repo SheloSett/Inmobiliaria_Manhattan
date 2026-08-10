@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // MessageSquare y BarChart3 comentados: eran los íconos de Consultas y Reportes (ver abajo)
-import { LayoutDashboard, Building2, Tags, ChevronDown, /* MessageSquare, BarChart3, */ Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Building2, Tags, ChevronDown, /* MessageSquare, BarChart3, */ Settings, LogOut, Menu, X, UserPlus } from 'lucide-react';
 
 const navItems = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -21,6 +21,9 @@ const navItems = [
   // las solicitudes van directo por WhatsApp y los reportes nunca se conectaron a datos.
   // { to: '/admin/contacts', icon: MessageSquare, label: 'Consultas' },
   // { to: '/admin/reports', icon: BarChart3, label: 'Reportes' },
+  // Postulaciones (10/08/2026): bandeja de CVs recibidos + solicitudes para abrir una
+  // sucursal, ambas cargadas desde la página pública /postulaciones.
+  { to: '/admin/applications', icon: UserPlus, label: 'Postulaciones' },
   { to: '/admin/settings', icon: Settings, label: 'Ajustes' },
 ];
 

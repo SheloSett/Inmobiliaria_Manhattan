@@ -119,6 +119,47 @@ model PropertyEvent {
   @@index([propertyId, type, createdAt])
 }
 
+// Postulaciones laborales enviadas desde la página pública /postulaciones (10/08/2026).
+// El CV se sube a Cloudinary como `raw` (ver cvUpload.middleware.js) y acá se guarda su
+// URL: el mensaje de WhatsApp que se le arma a la inmobiliaria incluye ese link, porque
+// los links wa.me solo permiten precargar TEXTO, nunca adjuntar un archivo.
+// `read` replica el patrón de Contact para marcar las ya revisadas desde el admin.
+model JobApplication {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String
+  city      String   @default("")
+  position  String   @default("")
+  message   String   @default("")
+  cvUrl     String
+  // cvName: nombre original del archivo subido (ej "cv-juan-perez.pdf"). Se guarda
+  // aparte porque la URL de Cloudinary lleva un public_id generado, no el nombre real.
+  cvName    String   @default("")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([read, createdAt])
+}
+
+// Solicitudes de "Abrí una sucursal con nosotros" (bloque inferior de /postulaciones).
+// No llevan archivo adjunto: solo datos de contacto + zona de interés. Se guardan además
+// de mandarse por WhatsApp para que la inmobiliaria pueda seguir el caso aunque el chat
+// se pierda entre conversaciones.
+model BranchInquiry {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String
+  phone      String
+  city       String
+  experience String   @default("")
+  message    String   @default("")
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([read, createdAt])
+}
+
 model SiteSettings {
   id            Int    @id @default(autoincrement())
   siteName      String @default("Inmobiliaria Manhattan")

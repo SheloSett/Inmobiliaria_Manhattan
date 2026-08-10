@@ -11,6 +11,8 @@ import ContactPage from './pages/Contact';
 import AboutUs from './pages/AboutUs';
 import Valuations from './pages/Valuations';
 import SearchResults from './pages/SearchResults';
+// Postulaciones (10/08/2026): postulación laboral con CV + solicitudes de sucursal.
+import Applications from './pages/Applications';
 // Páginas informativas del footer (contenido editable desde Ajustes → Contenido).
 import LegalPage from './pages/LegalPage';
 import Sitemap from './pages/Sitemap';
@@ -24,6 +26,8 @@ import AdminProperties from './pages/admin/AdminProperties';
 import AdminPropertyForm from './pages/admin/AdminPropertyForm';
 // Catálogos: pasó de ser pestaña de Ajustes a sub-ítem de Propiedades (ruta propia).
 import AdminCatalogs from './pages/admin/AdminCatalogs';
+// Bandeja de postulaciones de trabajo (con CV) y solicitudes de sucursal (10/08/2026).
+import AdminApplications from './pages/admin/AdminApplications';
 // Imports de Consultas y Reportes comentados (no eliminados, según regla del proyecto).
 // Motivo: el cliente pidió quitar esos paneles del admin (15/07/2026) porque no cumplen
 // ninguna función; sus rutas también quedaron comentadas más abajo.
@@ -53,6 +57,7 @@ export default function App() {
           <Route path="/contacto" element={<ContactPage />} />
           <Route path="/nosotros" element={<AboutUs />} />
           <Route path="/tasaciones" element={<Valuations />} />
+          <Route path="/postulaciones" element={<Applications />} />
           {/* Páginas del footer (contenido editable desde el CMS). LegalPage es genérica
               y se reutiliza para Privacidad y Términos vía la prop pageKey. */}
           <Route path="/privacidad" element={<LegalPage pageKey="privacy" />} />
@@ -73,6 +78,7 @@ export default function App() {
             {/* Catálogos (tipos de operación, tipos de propiedad, amenities) como
                 sub-ítem de Propiedades en el sidebar */}
             <Route path="catalogs" element={<AdminCatalogs />} />
+            <Route path="applications" element={<AdminApplications />} />
             {/* Rutas de Consultas y Reportes comentadas (no eliminadas, según regla del
                 proyecto). Motivo: el cliente pidió quitar esos paneles (15/07/2026). */}
             {/* <Route path="contacts" element={<AdminContacts />} /> */}

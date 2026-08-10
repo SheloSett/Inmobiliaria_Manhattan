@@ -12,6 +12,8 @@ const NAV_LINKS = [
   { label: 'Tasaciones', to: '/tasaciones' },
   { label: 'Nosotros', to: '/nosotros' },
   { label: 'Contacto', to: '/contacto' },
+  // Postulaciones (10/08/2026): CV + "Abrí una sucursal con nosotros".
+  { label: 'Postulaciones', to: '/postulaciones' },
 ];
 
 const ACTIVE_CLASS = 'font-label-md text-label-md text-secondary border-b-2 border-secondary pb-1';

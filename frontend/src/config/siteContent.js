@@ -18,6 +18,9 @@ const HOME_HERO_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCR9JN
 const HOME_SELL_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDG01UrebO-3lPJHM2-2eYZn5arUBc-gVoezAF3E8lZNYoiCXb1x9aaR-fFJChJzSZ4pFCKIRfBcn14B6TNJGVRAiSiNefoAC5YRz-zkrBjFtnRX6OAgLVEeqNF8x82HYtaY_jTGWoYHjzpknQy5yTa9sC2rbGzHwOMS5dOklFHu1Nljb6CDnP4ktdpewZlC0SGflbyEro-CkFe8hOZ86IrXXphdTRn3RJJAgo2zzL7yA5EkLEwYPNUggQEpcERSR2_AjKXR_scwSs';
 const ABOUT_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDX0ffEOJ2PnRW7HdWLZyev-skWPt16m0KxF0EFt5ZRk3mK_YO5_rxA8yflYhA4hBVc9YDV7_wehSByZZmxq2lzEiZ5dgbFrkInHuh1BY4rtQKYENqvNEDo4OzZidu95JM5fxKN5OmtSZmItitxvJhRu8XA3Q2yoaUgA-c_Evqd21BllVfUWJydvX6rhTqh8nuseGAjR82moL93bRYeXpkR70UQisTsm7izi3_WOyQS7z8ioLEy25mW';
 const VALUATIONS_HERO_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBIEQneuTcuwcD74rz4WN6YDbkifhcBm_rIexdaLrRe42WaFUm0KA6P3O2UcdMCxMBwt6sOxykeQioryKvzYe3q-QjL_SpgrAdyYZ4n5ep2T0b7QyFQkfsTz7-CSP6qavItb4NIadXaQ-_70gO1es1-_L9ZFJkKWkcHP-HikNpKI74E5Vkr6L766HgB-iEqi849Oum8O9CooZKGFHeC7DqNpmRyuVgy8eQTtYraIlKWW35oDswsJl9Fx11jxq3WdNam_IrZq-HPCn8';
+// Hero de Postulaciones: se reusa la imagen de Nosotros (equipo/oficina) porque encaja
+// con el mensaje de "sumate al equipo". Es editable desde Ajustes → Contenido.
+const APPLICATIONS_HERO_IMG = ABOUT_IMG;
 
 export const PAGES = [
   {
@@ -94,6 +97,50 @@ export const PAGES = [
       { key: 'whyEyebrow', label: 'Etiqueta "Por qué elegirnos"', type: 'text', default: 'Trayectoria' },
       { key: 'whyTitle', label: 'Título "Por qué elegirnos"', type: 'text', default: 'Conocimiento del mercado real' },
       { key: 'whyText', label: 'Texto "Por qué elegirnos"', type: 'textarea', default: 'No usamos algoritmos genéricos. Analizamos cada propiedad considerando su entorno, potencial y demanda actual de la zona.' },
+    ],
+  },
+  // Postulaciones (10/08/2026): página partida en dos mitades horizontales — arriba la
+  // postulación laboral con CV, abajo "Abrí una sucursal con nosotros". Cada mitad tiene
+  // su propio bloque de textos editables para poder cambiar el discurso de una sin tocar
+  // la otra (por ejemplo, pausar la búsqueda de empleados sin bajar lo de franquicias).
+  {
+    key: 'applications',
+    label: 'Postulaciones',
+    icon: 'badge',
+    fields: [
+      { key: 'heroImage', label: 'Imagen del Hero', type: 'image', default: APPLICATIONS_HERO_IMG },
+      { key: 'heroTitle', label: 'Título del Hero', type: 'text', default: 'Sumate a Manhattan' },
+      { key: 'heroSubtitle', label: 'Subtítulo del Hero', type: 'textarea', default: 'Buscamos personas con ganas de crecer en el mercado inmobiliario. Dejanos tu CV o abrí tu propia sucursal con nuestro respaldo.' },
+
+      { key: 'jobEyebrow', label: 'Etiqueta sección Postulación', type: 'text', default: 'Trabajá con nosotros' },
+      { key: 'jobTitle', label: 'Título sección Postulación', type: 'text', default: 'Enviá tu postulación' },
+      { key: 'jobSubtitle', label: 'Subtítulo sección Postulación', type: 'textarea', default: 'Completá tus datos y adjuntá tu CV. Lo recibimos al instante y te contactamos si tu perfil encaja con alguna búsqueda abierta.' },
+
+      { key: 'branchEyebrow', label: 'Etiqueta sección Sucursal', type: 'text', default: 'Expansión' },
+      { key: 'branchTitle', label: 'Título sección Sucursal', type: 'text', default: 'Abrí una sucursal con nosotros' },
+      { key: 'branchSubtitle', label: 'Subtítulo sección Sucursal', type: 'textarea', default: 'Llevá la marca Manhattan a tu ciudad. Te damos el modelo de negocio, la capacitación y el soporte; vos ponés el conocimiento de tu zona.' },
+      // branchBullet1/2/3 comentados, no eliminados, según regla del proyecto.
+      // Motivo: eran tres beneficios fijos; el cliente pidió poder agregar los que quiera
+      // (10/08/2026), así que se reemplazan por la lista repetible `branchBullets` de
+      // abajo. La página mantiene un fallback a estas claves por si ya habían sido
+      // editadas y guardadas antes del cambio (ver Applications.jsx).
+      // { key: 'branchBullet1', label: 'Beneficio sucursal 1', type: 'text', default: 'Marca instalada y respaldo comercial.' },
+      // { key: 'branchBullet2', label: 'Beneficio sucursal 2', type: 'text', default: 'Capacitación inicial y acompañamiento continuo.' },
+      // { key: 'branchBullet3', label: 'Beneficio sucursal 3', type: 'text', default: 'Sistema de gestión y portal de propiedades incluidos.' },
+      {
+        key: 'branchBullets',
+        label: 'Beneficios de la sucursal',
+        type: 'list',
+        itemLabel: 'Beneficio',
+        itemFields: [
+          { key: 'text', label: 'Beneficio', type: 'text', default: '' },
+        ],
+        default: [
+          { text: 'Marca instalada y respaldo comercial.' },
+          { text: 'Capacitación inicial y acompañamiento continuo.' },
+          { text: 'Sistema de gestión y portal de propiedades incluidos.' },
+        ],
+      },
     ],
   },
   {
