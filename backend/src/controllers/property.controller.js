@@ -159,7 +159,7 @@ exports.create = async (req, res) => {
     const {
       title, description, price, currency, operation, type, status,
       bedrooms, bathrooms, area, garage, hasKey, address, city, neighborhood,
-      lat, lng, featured, amenityIds,
+      lat, lng, featured, amenityIds, expenses, expensesCurrency,
     } = req.body;
 
     const ids = parseAmenityIds(amenityIds);
@@ -168,6 +168,9 @@ exports.create = async (req, res) => {
         title, description,
         price: parseFloat(price),
         currency: currency || 'USD',
+        // Expensas: monto opcional (null si viene vacío) + su moneda (default ARS).
+        expenses: expenses ? parseFloat(expenses) : null,
+        expensesCurrency: expensesCurrency || 'ARS',
         operation,
         type,
         status: status || 'AVAILABLE',
@@ -222,6 +225,7 @@ exports.update = async (req, res) => {
       title, description, price, currency, operation, type, status,
       bedrooms, bathrooms, area, garage, hasKey, address, city, neighborhood,
       lat, lng, featured, deleteImages, amenityIds, imageOrder,
+      expenses, expensesCurrency,
     } = req.body;
 
     const data = {};
@@ -233,6 +237,8 @@ exports.update = async (req, res) => {
     if (description !== undefined) data.description = description;
     if (price !== undefined) data.price = parseFloat(price);
     if (currency !== undefined) data.currency = currency;
+    if (expenses !== undefined) data.expenses = expenses ? parseFloat(expenses) : null;
+    if (expensesCurrency !== undefined) data.expensesCurrency = expensesCurrency || 'ARS';
     if (operation !== undefined) data.operation = operation;
     if (type !== undefined) data.type = type;
     if (status !== undefined) data.status = status;

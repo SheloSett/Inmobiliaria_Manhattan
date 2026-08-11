@@ -350,6 +350,8 @@ export default function PropertyDetail() {
     property.area != null && ['Superficie Total', `${property.area} m²`],
     property.bedrooms != null && ['Dormitorios', property.bedrooms],
     property.bathrooms != null && ['Baños', property.bathrooms],
+    // Expensas: solo se muestra si tiene un monto cargado (opcional).
+    property.expenses != null && ['Expensas', `${property.expensesCurrency || 'ARS'} $${Number(property.expenses).toLocaleString('es-AR')}`],
     ['Cochera', property.garage ? 'Sí' : 'No'],
     ['Con llave', property.hasKey ? 'Sí' : 'No'],
     property.neighborhood && ['Barrio', property.neighborhood],

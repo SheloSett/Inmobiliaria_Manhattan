@@ -26,7 +26,9 @@
       "Bash(node -e ' *)",
       "Bash(curl -s -o /dev/null -w 'front localhost:3000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf -> %{http_code} \\(%{content_type}\\)\\\\n' http://localhost:3000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf)",
       "Bash(curl -s -o /dev/null -w 'back  localhost:4000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf -> %{http_code} \\(%{content_type}\\)\\\\n' http://localhost:4000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf)",
-      "Bash(curl -s http://localhost:3000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf)"
+      "Bash(curl -s http://localhost:3000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf)",
+      "Bash(python -c \"from PIL import Image; im=Image.open\\(r'c:/Users/shelo/Desktop/workspace/inmobiliaria_manhattan/inmobiliaria-manhattan/frontend/public/logo.jpeg'\\); print\\('size', im.size, 'mode', im.mode\\)\")",
+      "Bash(python -c ' *)"
     ]
   }
 }

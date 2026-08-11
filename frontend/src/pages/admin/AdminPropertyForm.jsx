@@ -48,6 +48,7 @@ const STATUS_OPTIONS = [
 
 const EMPTY_FORM = {
   title: '', description: '', price: '', currency: 'USD',
+  expenses: '', expensesCurrency: 'ARS',
   operation: 'SALE', type: 'APARTMENT', status: 'AVAILABLE',
   bedrooms: '', bathrooms: '', area: '', garage: false, hasKey: false,
   address: '', city: '', neighborhood: '', featured: false,
@@ -110,6 +111,8 @@ export default function AdminPropertyForm() {
           description: p.description,
           price: String(p.price),
           currency: p.currency || 'USD',
+          expenses: p.expenses != null ? String(p.expenses) : '',
+          expensesCurrency: p.expensesCurrency || 'ARS',
           operation: p.operation,
           type: p.type,
           status: p.status,
@@ -313,6 +316,22 @@ export default function AdminPropertyForm() {
                   <select id="currency" name="currency" value={form.currency} onChange={handleChange} className={INPUT_CLASS}>
                     <option value="USD">USD ($)</option>
                     <option value="ARS">ARS ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+              </div>
+              {/* Expensas: monto mensual opcional + su moneda (puede diferir de la del precio). */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className={LABEL_CLASS} htmlFor="expenses">Expensas (mensual)</label>
+                  <input id="expenses" name="expenses" type="number" min="0" step="1" value={form.expenses}
+                    onChange={handleChange} className={INPUT_CLASS} placeholder="Ej: 50000 (opcional)" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className={LABEL_CLASS} htmlFor="expensesCurrency">Moneda expensas</label>
+                  <select id="expensesCurrency" name="expensesCurrency" value={form.expensesCurrency} onChange={handleChange} className={INPUT_CLASS}>
+                    <option value="ARS">ARS ($)</option>
+                    <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
                   </select>
                 </div>

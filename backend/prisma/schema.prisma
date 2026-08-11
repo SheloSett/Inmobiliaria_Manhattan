@@ -22,6 +22,10 @@ model Property {
   description   String
   price         Float
   currency      String        @default("USD")
+  // Expensas (11/08/2026): monto opcional del gasto mensual de expensas y su moneda
+  // (puede ser distinta a la del precio: el precio suele ir en USD y las expensas en ARS).
+  expenses         Float?
+  expensesCurrency String  @default("ARS")
   // operation y type dejaron de ser enums fijos: ahora son strings que referencian
   // (por su `value`) a los catálogos OperationType / PropertyTypeOption, gestionables
   // desde el admin (Ajustes → Catálogos). Se guardan como texto para poder agregar
