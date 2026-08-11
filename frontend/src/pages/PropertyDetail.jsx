@@ -101,6 +101,22 @@ function Footer() {
 //   );
 // }
 
+// Id de sesión del visitante para el heartbeat de presencia.
+// FIX (11/08/2026): antes se llamaba directo a `crypto.randomUUID()`, que SOLO existe en
+// contextos seguros (HTTPS o localhost/127.0.0.1). En el VPS la web se sirve por IP sobre
+// HTTP plano (puerto 8080, ver DEPLOY.md), así que ahí `crypto.randomUUID` es undefined y
+// tiraba "crypto.randomUUID is not a function". Como el error se lanzaba dentro de un
+// useEffect y no hay error boundary, React desmontaba todo el árbol: pantalla en blanco al
+// abrir cualquier propiedad. Pasaba igual en local entrando por la IP de LAN.
+// Este id solo distingue viewers en el panel "Viendo ahora"; no necesita ser criptográfico,
+// por eso el fallback con Math.random alcanza.
+function newSessionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `v-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function LoadingSkeleton() {
   return (
     <div className="animate-pulse flex flex-col gap-stack-lg">
@@ -161,7 +177,7 @@ export default function PropertyDetail() {
     if (!property) return;
     let sessionId = sessionStorage.getItem('manhattan_vid');
     if (!sessionId) {
-      sessionId = crypto.randomUUID();
+      sessionId = newSessionId();
       sessionStorage.setItem('manhattan_vid', sessionId);
     }
     const ping = () => api.post(`/properties/${property.id}/heartbeat`, { sessionId }).catch(() => {});
