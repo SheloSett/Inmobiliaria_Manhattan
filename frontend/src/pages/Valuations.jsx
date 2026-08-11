@@ -45,6 +45,8 @@ const EMPTY_FORM = {
 
 export default function Valuations() {
   const c = useSiteContent('valuations');
+  // WhatsApp de las solicitudes de tasación, editable desde la propia sección Tasaciones.
+  const waTarget = String(c.whatsapp || '').replace(/\D/g, '') || WHATSAPP_TASACIONES;
   const [form, setForm] = useState(EMPTY_FORM);
   // COMENTADO: estado "sending" ya no es necesario porque el envío dejó de ser una
   // request asíncrona a la API; ahora solo se abre WhatsApp con el mensaje armado.
@@ -105,7 +107,7 @@ export default function Valuations() {
       `Email: ${form.email}`,
       form.phone && `Teléfono: ${form.phone}`,
     ].filter(Boolean).join('\n');
-    window.open(`https://wa.me/${WHATSAPP_TASACIONES}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/${waTarget}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     toast.success('Abriendo WhatsApp con tu solicitud...');
     setForm(EMPTY_FORM);
   };

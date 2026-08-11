@@ -82,6 +82,9 @@ export const PAGES = [
     fields: [
       { key: 'title', label: 'Título de la página', type: 'text', default: 'Propiedades en Venta y Alquiler' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', default: 'Explorá nuestra selección de propiedades disponibles. Encontrá tu próximo hogar o inversión con Manhattan.' },
+      // Números de la ficha de propiedad (botón "Consultar por WhatsApp" y botón de llamada).
+      { key: 'consultWhatsapp', label: 'WhatsApp para consultas de propiedades (con código de país)', type: 'text', default: '5491160479977' },
+      { key: 'consultPhone', label: 'Teléfono del botón "Llamar" de la ficha (con código de país, ej +5491168144446)', type: 'text', default: '+5491168144446' },
     ],
   },
   {
@@ -97,6 +100,8 @@ export const PAGES = [
       { key: 'whyEyebrow', label: 'Etiqueta "Por qué elegirnos"', type: 'text', default: 'Trayectoria' },
       { key: 'whyTitle', label: 'Título "Por qué elegirnos"', type: 'text', default: 'Conocimiento del mercado real' },
       { key: 'whyText', label: 'Texto "Por qué elegirnos"', type: 'textarea', default: 'No usamos algoritmos genéricos. Analizamos cada propiedad considerando su entorno, potencial y demanda actual de la zona.' },
+      // WhatsApp donde llegan las solicitudes de tasación de esta página.
+      { key: 'whatsapp', label: 'WhatsApp donde llegan las solicitudes de tasación (con código de país)', type: 'text', default: '5491160479977' },
     ],
   },
   // Postulaciones (10/08/2026): página partida en dos mitades horizontales — arriba la
@@ -111,6 +116,8 @@ export const PAGES = [
       { key: 'heroImage', label: 'Imagen del Hero', type: 'image', default: APPLICATIONS_HERO_IMG },
       { key: 'heroTitle', label: 'Título del Hero', type: 'text', default: 'Sumate a Manhattan' },
       { key: 'heroSubtitle', label: 'Subtítulo del Hero', type: 'textarea', default: 'Buscamos personas con ganas de crecer en el mercado inmobiliario. Dejanos tu CV o abrí tu propia sucursal con nuestro respaldo.' },
+      // WhatsApp donde llegan las postulaciones (CV) y las solicitudes de sucursal.
+      { key: 'whatsapp', label: 'WhatsApp donde llegan las postulaciones (con código de país)', type: 'text', default: '5491160479977' },
 
       { key: 'jobEyebrow', label: 'Etiqueta sección Postulación', type: 'text', default: 'Trabajá con nosotros' },
       { key: 'jobTitle', label: 'Título sección Postulación', type: 'text', default: 'Enviá tu postulación' },
@@ -193,6 +200,8 @@ export const PAGES = [
       { key: 'heroTitle', label: 'Título del Hero', type: 'text', default: 'Estamos para ayudarte' },
       { key: 'heroSubtitle', label: 'Subtítulo del Hero', type: 'textarea', default: 'Comunicate con nuestro equipo de asesores inmobiliarios. Completá el formulario o visitanos en nuestras oficinas para una atención personalizada.' },
       { key: 'formTitle', label: 'Título del formulario', type: 'text', default: 'Envianos tu consulta' },
+      // WhatsApp al que llega el botón "Enviar por WhatsApp" del formulario de esta página.
+      { key: 'formWhatsapp', label: 'WhatsApp del botón "Enviar por WhatsApp" (con código de país)', type: 'text', default: '5491160479977' },
       { key: 'infoAddress', label: 'Dirección', type: 'textarea', default: 'San Nicolás 387\nCABA, Argentina' },
       { key: 'infoWhatsapp', label: 'WhatsApp', type: 'text', default: '11-6047-9977' },
       { key: 'infoEmail', label: 'Email', type: 'text', default: 'manhattan.inmo0@gmail.com' },

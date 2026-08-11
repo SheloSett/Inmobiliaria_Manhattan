@@ -6,6 +6,7 @@ import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 import ImageCarousel from '../components/ImageCarousel';
 import ShareMenu from '../components/ShareMenu';
+import { useSiteContent } from '../hooks/useSiteContent';
 
 const OPERATION_LABELS = { SALE: 'VENTA', RENT: 'ALQUILER' };
 const TYPE_LABELS = {
@@ -120,6 +121,11 @@ function LoadingSkeleton() {
 
 export default function PropertyDetail() {
   const { id } = useParams();
+  // Números de la ficha de propiedad, editables desde la sección Propiedades
+  // (Ajustes → Contenido → Propiedades). Fallback al .env/hardcodeado si están vacíos.
+  const propsContent = useSiteContent('properties');
+  const waTarget = String(propsContent.consultWhatsapp || '').replace(/\D/g, '') || WHATSAPP_CONSULTAS;
+  const telTarget = String(propsContent.consultPhone || '').replace(/[^+\d]/g, '') || TEL_CONSULTAS.replace(/[^+\d]/g, '');
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -242,7 +248,7 @@ export default function PropertyDetail() {
       // formData.phone && `📞 Teléfono: ${formData.phone}`,
     ].filter(Boolean).join('\n');
     trackContactClick();
-    window.open(`https://wa.me/${WHATSAPP_CONSULTAS}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/${waTarget}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     toast.success('Abriendo WhatsApp con tu consulta...');
     setFormData({ name: '', email: '', phone: '', message: DEFAULT_MESSAGE });
   }
@@ -631,7 +637,7 @@ export default function PropertyDetail() {
                   <div className="mt-stack-md pt-stack-sm border-t border-outline-variant flex justify-center gap-4">
                     <a
                       aria-label="Consultar por WhatsApp"
-                      href={`https://wa.me/${WHATSAPP_CONSULTAS}?text=${encodeURIComponent(buildWhatsAppMessage(''))}`}
+                      href={`https://wa.me/${waTarget}?text=${encodeURIComponent(buildWhatsAppMessage(''))}`}
                       target="_blank"
                       rel="noreferrer"
                       onClick={trackContactClick}
@@ -642,7 +648,7 @@ export default function PropertyDetail() {
                     </a>
                     <a
                       aria-label="Llamar por teléfono"
-                      href={`tel:${TEL_CONSULTAS.replace(/[^+\d]/g, '')}`}
+                      href={`tel:${telTarget}`}
                       className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-on-primary hover:bg-primary-container transition-colors"
                     >
                       <span className="material-symbols-outlined">call</span>

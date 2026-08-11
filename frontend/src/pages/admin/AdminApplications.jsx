@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Mail, Phone, X, FileText, Download } from 'lucide-react';
+import { Search, Mail, Phone, X, FileText, Download, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 // Panel de Postulaciones (10/08/2026). Dos solapas sobre la misma pantalla:
@@ -98,7 +99,7 @@ function DetailRow({ label, value }) {
 }
 
 // --- Modal de detalle ---
-function DetailModal({ item, tab, onClose, onMarkRead }) {
+function DetailModal({ item, tab, onClose, onMarkRead, onDelete }) {
   const av = avatarColor(item.name);
   const wa = waLink(item.phone);
 
@@ -180,7 +181,15 @@ function DetailModal({ item, tab, onClose, onMarkRead }) {
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-outline-variant flex flex-wrap justify-end gap-3 flex-shrink-0">
+        <div className="p-6 border-t border-outline-variant flex flex-wrap items-center gap-3 flex-shrink-0">
+          {/* Eliminar a la izquierda (acción destructiva, separada del resto) */}
+          <button
+            onClick={() => onDelete(item)}
+            className="px-4 py-2 rounded font-label-md text-label-md border border-outline-variant text-on-surface-variant hover:text-secondary hover:border-secondary transition-colors flex items-center gap-2 mr-auto"
+          >
+            <Trash2 size={16} />
+            Eliminar
+          </button>
           {!item.read && (
             <button
               onClick={() => { onMarkRead(item.id); onClose(); }}
@@ -219,7 +228,7 @@ function DetailModal({ item, tab, onClose, onMarkRead }) {
 }
 
 // --- Tarjeta ---
-function ApplicationCard({ item, tab, onOpen, onMarkRead }) {
+function ApplicationCard({ item, tab, onOpen, onMarkRead, onDelete }) {
   const av = avatarColor(item.name);
 
   return (
@@ -262,17 +271,24 @@ function ApplicationCard({ item, tab, onOpen, onMarkRead }) {
         className="mt-auto flex justify-between items-center border-t border-outline-variant pt-4 gap-2"
         onClick={e => e.stopPropagation()}
       >
-        {!item.read ? (
+        <div className="flex items-center gap-1">
+          {!item.read && (
+            <button
+              onClick={() => onMarkRead(item.id)}
+              className="p-2 text-outline hover:text-primary transition-colors rounded-full hover:bg-surface-container-low"
+              title="Marcar como leída"
+            >
+              <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
+            </button>
+          )}
           <button
-            onClick={() => onMarkRead(item.id)}
-            className="p-2 text-outline hover:text-primary transition-colors rounded-full hover:bg-surface-container-low"
-            title="Marcar como leída"
+            onClick={() => onDelete(item)}
+            className="p-2 text-outline hover:text-secondary transition-colors rounded-full hover:bg-secondary-fixed"
+            title="Eliminar"
           >
-            <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
+            <Trash2 size={18} />
           </button>
-        ) : (
-          <span />
-        )}
+        </div>
 
         <div className="flex items-center gap-2">
           {tab === 'jobs' && (
@@ -371,7 +387,13 @@ export default function AdminApplications() {
     try {
       await api.patch(`${cfg.endpoint}/${id}/read`);
       setItems(prev => prev.map(i => i.id === id ? { ...i, read: true } : i));
-      if (selected?.id === id) setSelected(prev => ({ ...prev, read: true }));
+      // Guard (10/08/2026): el botón del modal llama a onMarkRead() y enseguida onClose()
+      // (que pone selected=null). Como onMarkRead es async, cuando resolvía la request el
+      // modal ya estaba cerrado y `prev` era null → `{...null, read:true}` daba un objeto
+      // SIN name, se re-abría el modal con datos incompletos y crasheaba en avatarColor
+      // (item.name undefined → "reading 'bg'"). Solo actualizamos si el modal sigue abierto
+      // en ese mismo ítem; si ya se cerró, no lo re-abrimos.
+      setSelected(prev => (prev && prev.id === id ? { ...prev, read: true } : prev));
       setUnread(prev => Math.max(0, prev - 1));
       setOtherUnread(prev => ({ ...prev, [tab]: Math.max(0, prev[tab] - 1) }));
       if (filter === 'unread') {
@@ -380,6 +402,25 @@ export default function AdminApplications() {
       }
     } catch {
       // silencioso
+    }
+  };
+
+  // Elimina una postulación/solicitud (con confirmación). En jobs, el backend también
+  // borra el CV del disco. Agregado 11/08/2026.
+  const handleDelete = async (item) => {
+    if (!window.confirm(`¿Eliminar la postulación de "${item.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.delete(`${cfg.endpoint}/${item.id}`);
+      setItems(prev => prev.filter(i => i.id !== item.id));
+      setTotal(prev => Math.max(0, prev - 1));
+      if (!item.read) {
+        setUnread(prev => Math.max(0, prev - 1));
+        setOtherUnread(prev => ({ ...prev, [tab]: Math.max(0, prev[tab] - 1) }));
+      }
+      if (selected?.id === item.id) setSelected(null);
+      toast.success('Eliminada');
+    } catch {
+      toast.error('No se pudo eliminar');
     }
   };
 
@@ -401,6 +442,7 @@ export default function AdminApplications() {
           tab={tab}
           onClose={() => setSelected(null)}
           onMarkRead={handleMarkRead}
+          onDelete={handleDelete}
         />
       )}
 
@@ -495,6 +537,7 @@ export default function AdminApplications() {
                 tab={tab}
                 onOpen={setSelected}
                 onMarkRead={handleMarkRead}
+                onDelete={handleDelete}
               />
             ))}
           </div>

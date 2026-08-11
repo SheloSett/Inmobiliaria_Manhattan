@@ -23,7 +23,10 @@
       "Bash(git pull *)",
       "Bash(curl -s -o /dev/null -w \"backend health -> %{http_code}\\\\n\" http://localhost:4000/api/health)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\([i['name'] for i in d.get\\('inquiries',[]\\)]\\); print\\('Bot presente?', any\\(i['name']=='Bot' for i in d.get\\('inquiries',[]\\)\\)\\)\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w 'front localhost:3000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf -> %{http_code} \\(%{content_type}\\)\\\\n' http://localhost:3000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf)",
+      "Bash(curl -s -o /dev/null -w 'back  localhost:4000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf -> %{http_code} \\(%{content_type}\\)\\\\n' http://localhost:4000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf)",
+      "Bash(curl -s http://localhost:3000/uploads/cvs/cv_1786450024838_ngjpg2_cvtest.pdf)"
     ]
   }
 }

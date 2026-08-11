@@ -45,6 +45,9 @@ const PHONE_SALOMON = {
 
 export default function ContactPage() {
   const c = useSiteContent('contact');
+  // WhatsApp del botón "Enviar por WhatsApp", editable desde la propia sección Contacto
+  // (Ajustes → Contenido → Contacto). Fallback al .env/hardcodeado si el campo está vacío.
+  const waTarget = String(c.formWhatsapp || '').replace(/\D/g, '') || PHONE_SHAUL.wa;
   // Info de contacto armada desde el contenido editable (reemplaza al CONTACT_INFO
   // hardcodeado, hoy comentado arriba). Los campos multilínea (dirección, horarios)
   // se parten por saltos de línea para respetar el formato de varias filas.
@@ -102,7 +105,7 @@ export default function ContactPage() {
       // form.phone && `📞 Teléfono: ${form.phone}`,
       form.phone && `Teléfono: ${form.phone}`,
     ].filter(Boolean).join('\n');
-    window.open(`https://wa.me/${PHONE_SHAUL.wa}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/${waTarget}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     toast.success('Abriendo WhatsApp con tu consulta...');
     setForm({ name: '', email: '', phone: '', message: '' });
   };

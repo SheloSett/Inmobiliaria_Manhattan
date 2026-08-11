@@ -1,4 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
+const path = require('path');
 
 const prisma = new PrismaClient();
 
@@ -34,12 +36,16 @@ exports.createJobApplication = async (req, res) => {
     if (!name || !email || !phone) {
       return res.status(400).json({ error: 'Nombre, email y teléfono son obligatorios.' });
     }
-    // El CV es obligatorio: sin archivo la postulación no tiene sentido. `req.file.path`
-    // lo completa CloudinaryStorage con la URL pública del archivo ya subido.
+    // El CV es obligatorio: sin archivo la postulación no tiene sentido.
     if (!req.file) {
       return res.status(400).json({ error: 'Adjuntá tu CV para completar la postulación.' });
     }
 
+    // cvUrl = ruta pública servida por el backend (/uploads/cvs/<archivo>). Con el storage
+    // en disco (ver cvUpload.middleware.js), req.file.filename es el nombre del archivo
+    // guardado y req.file.path su ruta absoluta en disco (que NO se expone). El frontend
+    // (nginx) hace proxy de /uploads/ al backend, así que este link funciona igual en
+    // local y en el VPS. (Antes era req.file.path = la URL de Cloudinary, hoy bloqueada.)
     const application = await prisma.jobApplication.create({
       data: {
         name,
@@ -48,7 +54,7 @@ exports.createJobApplication = async (req, res) => {
         city: clean(req.body.city),
         position: clean(req.body.position),
         message: clean(req.body.message),
-        cvUrl: req.file.path,
+        cvUrl: `/uploads/cvs/${req.file.filename}`,
         cvName: req.file.originalname || '',
       },
     });
@@ -157,5 +163,37 @@ exports.markBranchInquiryRead = async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Error al actualizar la solicitud' });
+  }
+};
+
+// Elimina una postulación laboral y, de paso, borra su CV del disco (11/08/2026).
+// Solo se intenta borrar el archivo si el cvUrl es una ruta local (/uploads/cvs/...);
+// los CVs viejos que apuntan a Cloudinary (URL http) no se tocan.
+exports.deleteJobApplication = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const app = await prisma.jobApplication.findUnique({ where: { id } });
+    if (!app) return res.status(404).json({ error: 'Postulación no encontrada' });
+
+    if (app.cvUrl && app.cvUrl.startsWith('/uploads/cvs/')) {
+      // Se toma solo el basename para evitar path traversal (ej. "../../algo").
+      const filePath = path.join(__dirname, '../../uploads/cvs', path.basename(app.cvUrl));
+      fs.promises.unlink(filePath).catch(() => { /* si ya no está, no pasa nada */ });
+    }
+
+    await prisma.jobApplication.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al eliminar la postulación' });
+  }
+};
+
+// Elimina una solicitud de apertura de sucursal.
+exports.deleteBranchInquiry = async (req, res) => {
+  try {
+    await prisma.branchInquiry.delete({ where: { id: Number(req.params.id) } });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Error al eliminar la solicitud' });
   }
 };

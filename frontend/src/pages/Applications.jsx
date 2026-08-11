@@ -51,7 +51,7 @@ const POSITIONS = [
 
 // Extensiones que acepta el input (espejo del fileFilter de cvUpload.middleware.js).
 const CV_ACCEPT = '.pdf,.doc,.docx,.odt,.rtf';
-const CV_MAX_BYTES = 10 * 1024 * 1024;
+const CV_MAX_BYTES = 20 * 1024 * 1024; // 20 MB (11/08/2026, antes 10). Igual que el backend.
 
 // `website` es el campo honeypot anti-bots (10/08/2026): va oculto por CSS, una persona
 // nunca lo ve ni lo completa; si el backend lo recibe con algo, descarta el envío como
@@ -123,9 +123,11 @@ function buildBranchMessage(form) {
   ].filter(Boolean).join('\n');
 }
 
-function openWhatsApp(message) {
+// El número destino se pasa como parámetro: ahora sale del CMS (editable desde el admin),
+// con fallback a la constante de .env si el campo estuviera vacío.
+function openWhatsApp(message, wa) {
   window.open(
-    `https://wa.me/${WHATSAPP_POSTULACIONES}?text=${encodeURIComponent(message)}`,
+    `https://wa.me/${wa || WHATSAPP_POSTULACIONES}?text=${encodeURIComponent(message)}`,
     '_blank',
     'noopener,noreferrer'
   );
@@ -158,6 +160,9 @@ function formatBytes(bytes) {
 
 export default function Applications() {
   const c = useSiteContent('applications');
+  // WhatsApp de las postulaciones, editable desde la propia sección Postulaciones
+  // (Ajustes → Contenido → Postulaciones). Fallback al .env si el campo está vacío.
+  const waApplications = String(c.whatsapp || '').replace(/\D/g, '') || WHATSAPP_POSTULACIONES;
 
   // Solapa activa del selector. Antes la página estaba partida en dos mitades apiladas
   // (postulación arriba, sucursal abajo); ahora es un único bloque donde se alterna entre
@@ -184,7 +189,7 @@ export default function Applications() {
     // Se valida el tamaño acá además del backend para no hacerle subir 10 MB al
     // postulante y recién ahí avisarle que no entra.
     if (file && file.size > CV_MAX_BYTES) {
-      toast.error('El archivo supera los 10 MB. Subí una versión más liviana de tu CV.');
+      toast.error('El archivo supera los 20 MB. Subí una versión más liviana de tu CV.');
       e.target.value = '';
       setCv(null);
       return;
@@ -208,8 +213,15 @@ export default function Applications() {
 
       const res = await api.post('/applications/jobs', data);
 
+      // El CV ahora se guarda en el backend y la API devuelve una ruta RELATIVA
+      // (/uploads/cvs/...). En el WhatsApp hay que mandar la URL COMPLETA (con dominio),
+      // si no el link no se puede abrir. Se le antepone el origen del sitio; si algún día
+      // volviera a ser una URL absoluta (http...), se usa tal cual. (Fix 11/08/2026)
+      const rawCvUrl = res.data.cvUrl || '';
+      const cvFullUrl = /^https?:\/\//i.test(rawCvUrl) ? rawCvUrl : `${window.location.origin}${rawCvUrl}`;
+
       // Recién con la URL del CV devuelta por la API se puede armar el mensaje.
-      openWhatsApp(buildJobMessage(job, res.data.cvUrl));
+      openWhatsApp(buildJobMessage(job, cvFullUrl), waApplications);
       toast.success('¡Postulación enviada! Abriendo WhatsApp...');
       setJob(EMPTY_JOB);
       setCv(null);
@@ -230,7 +242,7 @@ export default function Applications() {
 
     try {
       await api.post('/applications/branches', branch);
-      openWhatsApp(message);
+      openWhatsApp(message, waApplications);
       toast.success('¡Solicitud enviada! Abriendo WhatsApp...');
       setBranch(EMPTY_BRANCH);
     } catch (err) {
@@ -374,7 +386,7 @@ export default function Applications() {
                         ) : (
                           <>
                             <span className="block font-label-md text-label-md text-on-surface">Adjuntar CV</span>
-                            <span className="block text-[12px] text-on-surface-variant">PDF, DOC, DOCX, ODT o RTF — hasta 10 MB</span>
+                            <span className="block text-[12px] text-on-surface-variant">PDF, DOC, DOCX, ODT o RTF — hasta 20 MB</span>
                           </>
                         )}
                       </span>

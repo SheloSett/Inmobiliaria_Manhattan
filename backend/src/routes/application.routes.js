@@ -15,9 +15,9 @@ function uploadCv(req, res, next) {
     if (!err) return next();
 
     if (err instanceof multer.MulterError) {
-      // LIMIT_FILE_SIZE es el único límite que puede saltar acá (single file, 10 MB).
+      // LIMIT_FILE_SIZE es el único límite que puede saltar acá (single file, 20 MB).
       const msg = err.code === 'LIMIT_FILE_SIZE'
-        ? 'El archivo supera los 10 MB. Subí una versión más liviana de tu CV.'
+        ? 'El archivo supera los 20 MB. Subí una versión más liviana de tu CV.'
         : 'No se pudo procesar el archivo adjunto.';
       return res.status(400).json({ error: msg });
     }
@@ -34,10 +34,12 @@ function uploadCv(req, res, next) {
 router.post('/jobs', publicFormLimiter, uploadCv, ctrl.createJobApplication);
 router.get('/jobs', authMiddleware, ctrl.getJobApplications);
 router.patch('/jobs/:id/read', authMiddleware, ctrl.markJobApplicationRead);
+router.delete('/jobs/:id', authMiddleware, ctrl.deleteJobApplication);
 
 // --- Solicitudes para abrir una sucursal (sin archivo) ---
 router.post('/branches', publicFormLimiter, ctrl.createBranchInquiry);
 router.get('/branches', authMiddleware, ctrl.getBranchInquiries);
 router.patch('/branches/:id/read', authMiddleware, ctrl.markBranchInquiryRead);
+router.delete('/branches/:id', authMiddleware, ctrl.deleteBranchInquiry);
 
 module.exports = router;
