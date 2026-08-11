@@ -4,6 +4,11 @@ const prisma = new PrismaClient();
 
 exports.create = async (req, res) => {
   try {
+    // Honeypot anti-bots (10/08/2026): campo `website` oculto por CSS; si viene lleno es
+    // un bot → 201 "ok" falso sin guardar. Ver applications/rateLimit para el contexto.
+    if (typeof req.body.website === 'string' && req.body.website.trim() !== '') {
+      return res.status(201).json({ ok: true });
+    }
     const { name, email, phone, message, propertyId } = req.body;
     const contact = await prisma.contact.create({
       data: { name, email, phone, message, propertyId: propertyId ? Number(propertyId) : null },

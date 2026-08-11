@@ -16,6 +16,12 @@ const applicationRoutes = require('./routes/application.routes');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// trust proxy = 1 (10/08/2026): en el VPS el backend corre detrás del nginx del frontend
+// (que hace proxy de /api). Sin esto, express-rate-limit vería la IP del proxy para TODAS
+// las requests y limitaría a todos los visitantes juntos. Con '1' confía en un solo hop
+// (el nginx) y toma la IP real del X-Forwarded-For. En local (sin proxy) no molesta.
+app.set('trust proxy', 1);
+
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

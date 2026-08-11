@@ -53,6 +53,9 @@ const POSITIONS = [
 const CV_ACCEPT = '.pdf,.doc,.docx,.odt,.rtf';
 const CV_MAX_BYTES = 10 * 1024 * 1024;
 
+// `website` es el campo honeypot anti-bots (10/08/2026): va oculto por CSS, una persona
+// nunca lo ve ni lo completa; si el backend lo recibe con algo, descarta el envío como
+// spam. Como el submit spreddea todo el estado, viaja solo sin lógica extra.
 const EMPTY_JOB = {
   name: '',
   email: '',
@@ -60,6 +63,7 @@ const EMPTY_JOB = {
   city: '',
   position: POSITIONS[0],
   message: '',
+  website: '',
 };
 
 const EMPTY_BRANCH = {
@@ -69,7 +73,21 @@ const EMPTY_BRANCH = {
   city: '',
   experience: '',
   message: '',
+  website: '',
 };
+
+// Input honeypot reutilizable: oculto a la vista y a lectores de pantalla, fuera del
+// tab-order y sin autocompletar, para que solo un bot lo llene.
+function Honeypot({ value, onChange }) {
+  return (
+    <div aria-hidden="true" className="absolute left-[-9999px] w-px h-px overflow-hidden" style={{ opacity: 0 }}>
+      <label>
+        No completar este campo
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" value={value} onChange={onChange} />
+      </label>
+    </div>
+  );
+}
 
 // Sin emojis a propósito: son caracteres "astral" (fuera del plano básico de Unicode)
 // que WhatsApp Desktop/Web decodifican mal al precargar el texto vía link wa.me y se ven
@@ -292,6 +310,7 @@ export default function Applications() {
 
                 {formTab === 'job' && (
                 <form className="space-y-stack-md" onSubmit={handleJobSubmit}>
+                  <Honeypot value={job.website} onChange={handleJobChange} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-sm">
                     <div className="flex flex-col gap-2">
                       <label className="font-label-md text-label-md text-primary" htmlFor="job-name">Nombre completo</label>
@@ -387,6 +406,7 @@ export default function Applications() {
 
                 {formTab === 'branch' && (
                 <form className="space-y-stack-md" onSubmit={handleBranchSubmit}>
+                  <Honeypot value={branch.website} onChange={handleBranchChange} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-sm">
                     <div className="flex flex-col gap-2">
                       <label className="font-label-md text-label-md text-primary" htmlFor="branch-name">Nombre completo</label>

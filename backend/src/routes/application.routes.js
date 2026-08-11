@@ -3,6 +3,8 @@ const multer = require('multer');
 const ctrl = require('../controllers/application.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const cvUpload = require('../middleware/cvUpload.middleware');
+// Rate-limit anti-spam para los POST públicos (10/08/2026).
+const { publicFormLimiter } = require('../middleware/rateLimit.middleware');
 
 // Subida del CV con los errores traducidos a JSON. Sin este wrapper, un archivo
 // demasiado grande o con formato inválido llega al handler de error por defecto de
@@ -27,12 +29,14 @@ function uploadCv(req, res, next) {
 }
 
 // --- Postulaciones laborales (con CV) ---
-router.post('/jobs', uploadCv, ctrl.createJobApplication);
+// publicFormLimiter va ANTES de uploadCv a propósito: si se pasó el límite, se corta
+// sin llegar a subir el archivo a Cloudinary.
+router.post('/jobs', publicFormLimiter, uploadCv, ctrl.createJobApplication);
 router.get('/jobs', authMiddleware, ctrl.getJobApplications);
 router.patch('/jobs/:id/read', authMiddleware, ctrl.markJobApplicationRead);
 
 // --- Solicitudes para abrir una sucursal (sin archivo) ---
-router.post('/branches', ctrl.createBranchInquiry);
+router.post('/branches', publicFormLimiter, ctrl.createBranchInquiry);
 router.get('/branches', authMiddleware, ctrl.getBranchInquiries);
 router.patch('/branches/:id/read', authMiddleware, ctrl.markBranchInquiryRead);
 

@@ -16,8 +16,17 @@ const prisma = new PrismaClient();
 // siempre son strings. Se recortan y se validan los obligatorios.
 const clean = (v) => (typeof v === 'string' ? v.trim() : '');
 
+// Honeypot anti-bots (10/08/2026): los formularios públicos tienen un campo `website`
+// oculto por CSS que una persona nunca ve ni completa, pero los bots que llenan todos
+// los campos sí. Si viene con algo, es casi seguro un bot: devolvemos un 201 "ok" falso
+// (sin guardar nada) para no darle señales de que lo detectamos.
+function isBot(req) {
+  return clean(req.body.website) !== '';
+}
+
 exports.createJobApplication = async (req, res) => {
   try {
+    if (isBot(req)) return res.status(201).json({ ok: true });
     const name = clean(req.body.name);
     const email = clean(req.body.email);
     const phone = clean(req.body.phone);
@@ -89,6 +98,7 @@ exports.markJobApplicationRead = async (req, res) => {
 
 exports.createBranchInquiry = async (req, res) => {
   try {
+    if (isBot(req)) return res.status(201).json({ ok: true });
     const name = clean(req.body.name);
     const email = clean(req.body.email);
     const phone = clean(req.body.phone);
