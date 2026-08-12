@@ -5,10 +5,15 @@ services:
     environment:
       POSTGRES_USER: manhattan
       # POSTGRES_PASSWORD: manhattan123
-      # ↑ Comentado: la contraseña fija era insegura para el VPS. Ahora se lee
-      #   del archivo .env raíz (POSTGRES_PASSWORD); si no existe, usa el mismo
-      #   valor de antes como default para desarrollo local.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manhattan123}
+      # POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manhattan123}
+      # ↑ Ambas comentadas. La primera era la contraseña fija original. La segunda (del
+      #   10/08/2026) intentaba leerla del .env, pero el operador `:-` aplica el default
+      #   tanto si la variable NO EXISTE como si existe pero está VACÍA — y el .env real
+      #   tenía `POSTGRES_PASSWORD=` sin valor. Resultado: se usaba silenciosamente la
+      #   contraseña "manhattan123", que está publicada en este repo (es público).
+      #   Con `:?` compose ABORTA con un mensaje claro si falta el valor, en vez de
+      #   arrancar con un secreto conocido creyendo que está configurado.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?definí POSTGRES_PASSWORD en el .env de la raíz, ver .env.example}"
       POSTGRES_DB: manhattan_db
     ports:
       # - "5434:5432"
@@ -26,11 +31,17 @@ services:
     environment:
       # DATABASE_URL: postgresql://manhattan:manhattan123@db:5432/manhattan_db
       # JWT_SECRET: manhattan_secret_key_2024
-      # ↑ Comentados: los secretos fijos no deben quedar hardcodeados en un
-      #   servidor público. Ahora se leen del .env raíz con los mismos valores
-      #   de antes como default para desarrollo local.
-      DATABASE_URL: postgresql://manhattan:${POSTGRES_PASSWORD:-manhattan123}@db:5432/manhattan_db
-      JWT_SECRET: ${JWT_SECRET:-manhattan_secret_key_2024}
+      # DATABASE_URL: postgresql://manhattan:${POSTGRES_PASSWORD:-manhattan123}@db:5432/manhattan_db
+      # JWT_SECRET: ${JWT_SECRET:-manhattan_secret_key_2024}
+      # ↑ Comentadas por el mismo motivo que POSTGRES_PASSWORD arriba: con `:-` un .env
+      #   con la variable vacía caía al default. En el caso del JWT_SECRET eso era lo más
+      #   grave de todo: "manhattan_secret_key_2024" está en este repo público, y con esa
+      #   clave cualquiera puede FIRMARSE un token de admin válido y entrar al panel sin
+      #   saber ninguna contraseña. Ahora, sin valor en el .env, compose no levanta.
+      # Los valores van entre comillas porque el mensaje de error de `:?` lleva ":" y sin
+      # comillas YAML lo interpreta como un mapa anidado y no parsea el archivo.
+      DATABASE_URL: "postgresql://manhattan:${POSTGRES_PASSWORD:?definí POSTGRES_PASSWORD en el .env de la raíz}@db:5432/manhattan_db"
+      JWT_SECRET: "${JWT_SECRET:?definí JWT_SECRET en el .env de la raíz, generalo con openssl rand -hex 32}"
       PORT: 4000
       NODE_ENV: production
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}

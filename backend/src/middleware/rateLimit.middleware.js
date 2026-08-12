@@ -15,4 +15,22 @@ const publicFormLimiter = rateLimit({
   message: { error: 'Demasiados envíos desde esta conexión. Esperá unos minutos e intentá de nuevo.' },
 });
 
-module.exports = { publicFormLimiter };
+// Rate limiter del LOGIN admin (11/08/2026). Era la única ruta pública sin límite, así
+// que se le podían tirar contraseñas a mano alzada sin ningún costo: con el usuario por
+// defecto del seed (admin@manhattan.com) publicado en el repo, la fuerza bruta era
+// cuestión de tiempo. 10 intentos FALLIDOS por IP cada 15 minutos: un humano que se
+// equivoca dos o tres veces no lo nota, un script sí.
+//
+// skipSuccessfulRequests: los logins correctos no consumen cuota. Sin esto, un admin que
+// entra y sale varias veces (o varias personas detrás de la misma IP de oficina) se
+// quedaría sin intentos aunque nunca haya fallado.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,                   // 10 intentos fallidos por IP
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos fallidos. Esperá unos minutos e intentá de nuevo.' },
+});
+
+module.exports = { publicFormLimiter, loginLimiter };

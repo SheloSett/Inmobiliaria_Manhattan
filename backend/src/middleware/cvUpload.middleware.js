@@ -45,8 +45,18 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     // Se antepone timestamp + random para que dos "cv.pdf" no se pisen entre sí, y se
     // conserva la extensión para que el navegador sepa abrirlo/descargarlo.
-    const ext = path.extname(file.originalname) || '.pdf';
-    const base = slugifyFilename(path.basename(file.originalname, ext));
+    // const ext = path.extname(file.originalname) || '.pdf';
+    // ↑ Comentado (11/08/2026): tomaba la extensión del nombre original TAL CUAL. Como el
+    //   fileFilter de abajo solo miraba el mimetype (que lo manda el cliente y se puede
+    //   falsificar), se podía subir un archivo llamado "cv.html" declarando
+    //   Content-Type: application/pdf y quedaba guardado como .html en uploads/cvs. Ese
+    //   archivo lo sirve express.static en el MISMO origen que el panel admin, así que el
+    //   navegador lo ejecutaba como HTML/JS y podía robar el token admin del localStorage.
+    //   Ahora la extensión se normaliza a minúsculas y se valida contra la whitelist; si
+    //   no está en la lista, se cae a .pdf (nunca puede quedar un .html/.svg/.js en disco).
+    const rawExt = path.extname(file.originalname).toLowerCase();
+    const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : '.pdf';
+    const base = slugifyFilename(path.basename(file.originalname, path.extname(file.originalname)));
     cb(null, `cv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`);
   },
 });
@@ -78,8 +88,22 @@ const ALLOWED_MIMES = [
   'text/rtf',
 ];
 
+// Extensiones permitidas, espejo de ALLOWED_MIMES. Se valida APARTE del mimetype porque
+// el mimetype lo declara el cliente en el multipart y es trivial de falsificar; la
+// extensión, en cambio, es la que decide con qué Content-Type lo va a servir después
+// express.static — y por lo tanto la que decide si el navegador lo ejecuta o no.
+const ALLOWED_EXTS = ['.pdf', '.doc', '.docx', '.odt', '.rtf'];
+
 const fileFilter = (req, file, cb) => {
-  if (ALLOWED_MIMES.includes(file.mimetype)) return cb(null, true);
+  // if (ALLOWED_MIMES.includes(file.mimetype)) return cb(null, true);
+  // ↑ Comentado (11/08/2026): validar SOLO el mimetype era insuficiente. El mimetype
+  //   viaja en el multipart y lo pone quien hace el request, así que un curl con
+  //   `Content-Type: application/pdf` y `filename="payload.html"` pasaba el filtro y
+  //   dejaba un HTML ejecutable servido desde nuestro propio dominio (XSS almacenado →
+  //   robo del token admin). Ahora tienen que coincidir LAS DOS cosas: mimetype declarado
+  //   Y extensión real del archivo.
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (ALLOWED_MIMES.includes(file.mimetype) && ALLOWED_EXTS.includes(ext)) return cb(null, true);
   // Se rechaza con Error (no `cb(null, false)`) para que el postulante vea el motivo:
   // si se descartara en silencio, la postulación se guardaría sin CV.
   cb(new Error('Formato de archivo no permitido. Subí tu CV en PDF, DOC, DOCX, ODT o RTF.'));

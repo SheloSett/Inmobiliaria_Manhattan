@@ -24,7 +24,26 @@ app.set('trust proxy', 1);
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// ↑ Comentado (11/08/2026): servía la carpeta tal cual, dejando que el navegador
+//   INTERPRETE el archivo según su extensión. Como los CVs ahora se guardan en disco y se
+//   sirven desde el mismo origen que el panel admin, un archivo con extensión ejecutable
+//   (.html, .svg, .js) subido por el formulario público se convertía en XSS almacenado:
+//   el script corría en nuestro dominio y podía leer el token admin del localStorage.
+//   La causa raíz se tapó en cvUpload.middleware.js (whitelist de extensiones); esto es la
+//   segunda capa, para que ni siquiera un archivo viejo o subido por otra vía se ejecute:
+//     - Content-Disposition: attachment → el navegador lo DESCARGA en vez de renderizarlo.
+//       No afecta a las imágenes viejas de propiedades: las etiquetas <img> ignoran este
+//       header y siguen mostrándose igual (verificado: nada navega directo a /uploads).
+//     - X-Content-Type-Options: nosniff → impide que el navegador adivine un tipo distinto
+//       al declarado (por ejemplo, tratar como HTML un archivo servido como texto plano).
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res) => {
+    res.setHeader('Content-Disposition', 'attachment');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  },
+}));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
