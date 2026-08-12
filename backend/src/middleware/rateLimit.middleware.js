@@ -33,4 +33,31 @@ const loginLimiter = rateLimit({
   message: { error: 'Demasiados intentos fallidos. Esperá unos minutos e intentá de nuevo.' },
 });
 
-module.exports = { publicFormLimiter, loginLimiter };
+// Limiter de los endpoints públicos de TRACKING de la ficha de propiedad (11/08/2026):
+// el heartbeat de "Viendo ahora" y el clic a WhatsApp. Los dos son POST sin auth.
+//
+// El heartbeat lo manda el navegador cada ~20s (3 por minuto por pestaña abierta), así
+// que el tope es alto a propósito: tiene que ser imposible de alcanzar navegando en serio
+// —incluso con varias pestañas, o con varias personas detrás de la IP de una oficina— y
+// aun así frenar en seco a un script, que puede mandar miles por segundo.
+const heartbeatLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutos
+  max: 300,                 // 60 por minuto sostenido
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes.' },
+});
+
+// El clic a WhatsApp sí INSERTA una fila en la BD por llamada, así que se acota mucho
+// más: sin esto, un bot podía inflar la tabla PropertyEvent sin límite y, de paso,
+// falsear el ranking de "propiedades más consultadas" del dashboard. Una persona real
+// hace esto un puñado de veces por visita.
+const contactClickLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutos
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes.' },
+});
+
+module.exports = { publicFormLimiter, loginLimiter, heartbeatLimiter, contactClickLimiter };

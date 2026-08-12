@@ -26,14 +26,29 @@ function isBot(req) {
   return clean(req.body.website) !== '';
 }
 
+// Borra del disco el CV que multer ya escribió cuando la postulación NO se va a guardar
+// (11/08/2026). Multer procesa el archivo ANTES de que corra este controller, así que para
+// cuando detectamos un bot o una validación fallida el archivo ya está en uploads/cvs. Sin
+// esto quedaba ahí para siempre, sin ninguna fila en la BD que lo referencie: basura que
+// nadie puede ver ni borrar desde el panel, ocupando disco del VPS y —peor— guardando
+// datos personales de alguien sin ningún registro de que existen.
+function discardUploadedFile(req) {
+  if (!req.file || !req.file.path) return;
+  fs.promises.unlink(req.file.path).catch(() => { /* si ya no está, no pasa nada */ });
+}
+
 exports.createJobApplication = async (req, res) => {
   try {
-    if (isBot(req)) return res.status(201).json({ ok: true });
+    if (isBot(req)) {
+      discardUploadedFile(req);
+      return res.status(201).json({ ok: true });
+    }
     const name = clean(req.body.name);
     const email = clean(req.body.email);
     const phone = clean(req.body.phone);
 
     if (!name || !email || !phone) {
+      discardUploadedFile(req);
       return res.status(400).json({ error: 'Nombre, email y teléfono son obligatorios.' });
     }
     // El CV es obligatorio: sin archivo la postulación no tiene sentido.
@@ -61,6 +76,8 @@ exports.createJobApplication = async (req, res) => {
 
     res.status(201).json(application);
   } catch {
+    // Si el insert falló, el archivo tampoco tiene dueño: se descarta igual que arriba.
+    discardUploadedFile(req);
     res.status(500).json({ error: 'Error al enviar la postulación' });
   }
 };
@@ -175,13 +192,26 @@ exports.deleteJobApplication = async (req, res) => {
     const app = await prisma.jobApplication.findUnique({ where: { id } });
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' });
 
+    // if (app.cvUrl && app.cvUrl.startsWith('/uploads/cvs/')) {
+    //   const filePath = path.join(__dirname, '../../uploads/cvs', path.basename(app.cvUrl));
+    //   fs.promises.unlink(filePath).catch(() => {});
+    // }
+    // await prisma.jobApplication.delete({ where: { id } });
+    //
+    // ↑ Comentado (11/08/2026): borraba el archivo ANTES de borrar la fila. Si el delete
+    //   de Prisma fallaba (base caída, timeout), el CV ya no estaba pero la postulación
+    //   seguía en el panel apuntando a un archivo inexistente — imposible de recuperar.
+    //   Invertido: primero se borra el registro y, solo si eso salió bien, el archivo.
+    //   Al revés el peor caso es un archivo huérfano en disco, que es recuperable y no
+    //   pierde información.
+    await prisma.jobApplication.delete({ where: { id } });
+
     if (app.cvUrl && app.cvUrl.startsWith('/uploads/cvs/')) {
       // Se toma solo el basename para evitar path traversal (ej. "../../algo").
       const filePath = path.join(__dirname, '../../uploads/cvs', path.basename(app.cvUrl));
       fs.promises.unlink(filePath).catch(() => { /* si ya no está, no pasa nada */ });
     }
 
-    await prisma.jobApplication.delete({ where: { id } });
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Error al eliminar la postulación' });

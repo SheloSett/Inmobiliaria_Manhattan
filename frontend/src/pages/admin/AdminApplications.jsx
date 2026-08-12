@@ -26,6 +26,10 @@ const TABS = {
     emptyIcon: 'badge',
     emptyText: 'No hay postulaciones en esta categoría.',
     countLabel: (n) => `${n} postulación${n !== 1 ? 'es' : ''}`,
+    // Cómo se nombra el ítem en el confirm de borrado y en el toast (11/08/2026). Va acá
+    // y no hardcodeado en handleDelete porque las dos solapas comparten ese código.
+    deleteLabel: 'la postulación',
+    deletedToast: 'Postulación eliminada',
   },
   branches: {
     label: 'Sucursales',
@@ -37,6 +41,8 @@ const TABS = {
     emptyIcon: 'storefront',
     emptyText: 'No hay solicitudes en esta categoría.',
     countLabel: (n) => `${n} solicitud${n !== 1 ? 'es' : ''}`,
+    deleteLabel: 'la solicitud',
+    deletedToast: 'Solicitud eliminada',
   },
 };
 
@@ -408,7 +414,12 @@ export default function AdminApplications() {
   // Elimina una postulación/solicitud (con confirmación). En jobs, el backend también
   // borra el CV del disco. Agregado 11/08/2026.
   const handleDelete = async (item) => {
-    if (!window.confirm(`¿Eliminar la postulación de "${item.name}"? Esta acción no se puede deshacer.`)) return;
+    // if (!window.confirm(`¿Eliminar la postulación de "${item.name}"? Esta acción no se puede deshacer.`)) return;
+    // ↑ Comentada (11/08/2026): decía "la postulación" fijo, pero handleDelete lo comparten
+    //   las dos solapas. En Sucursales preguntaba "¿Eliminar la postulación de X?" para algo
+    //   que es una solicitud de sucursal: confuso justo en el diálogo de una acción
+    //   irreversible. Ahora el sustantivo sale de la config de la solapa activa.
+    if (!window.confirm(`¿Eliminar ${cfg.deleteLabel} de "${item.name}"? Esta acción no se puede deshacer.`)) return;
     try {
       await api.delete(`${cfg.endpoint}/${item.id}`);
       setItems(prev => prev.filter(i => i.id !== item.id));
@@ -418,7 +429,9 @@ export default function AdminApplications() {
         setOtherUnread(prev => ({ ...prev, [tab]: Math.max(0, prev[tab] - 1) }));
       }
       if (selected?.id === item.id) setSelected(null);
-      toast.success('Eliminada');
+      // toast.success('Eliminada');
+      // ↑ Comentado: mismo caso que el confirm, "Eliminada" a secas no decía qué.
+      toast.success(cfg.deletedToast);
     } catch {
       toast.error('No se pudo eliminar');
     }

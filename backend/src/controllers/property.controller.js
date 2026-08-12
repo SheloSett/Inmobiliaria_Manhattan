@@ -127,7 +127,14 @@ exports.trackHeartbeat = (req, res) => {
 // dashboard admin. Agregado 28/07/2026.
 exports.trackContactClick = async (req, res) => {
   try {
-    await prisma.propertyEvent.create({ data: { propertyId: Number(req.params.id), type: 'CONTACT_CLICK' } });
+    // Validación del id (11/08/2026): antes se pasaba Number(req.params.id) directo al
+    // insert, así que una URL como /properties/abc/contact-click mandaba NaN a la base y
+    // volvía como un 500. Ahora se descarta antes de tocar la BD.
+    const propertyId = Number(req.params.id);
+    if (!Number.isInteger(propertyId) || propertyId <= 0) {
+      return res.status(400).json({ error: 'Id de propiedad inválido' });
+    }
+    await prisma.propertyEvent.create({ data: { propertyId, type: 'CONTACT_CLICK' } });
     res.status(204).end();
   } catch {
     res.status(500).json({ error: 'Error del servidor' });

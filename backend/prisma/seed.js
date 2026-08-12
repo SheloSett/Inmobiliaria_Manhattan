@@ -4,17 +4,46 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('admin123', 10);
-
-  await prisma.admin.upsert({
-    where: { email: 'admin@manhattan.com' },
-    update: {},
-    create: {
-      email: 'admin@manhattan.com',
-      password: hashedPassword,
-      name: 'Administrador',
-    },
-  });
+  // const hashedPassword = await bcrypt.hash('admin123', 10);
+  //
+  // await prisma.admin.upsert({
+  //   where: { email: 'admin@manhattan.com' },
+  //   update: {},
+  //   create: {
+  //     email: 'admin@manhattan.com',
+  //     password: hashedPassword,
+  //     name: 'Administrador',
+  //   },
+  // });
+  //
+  // ↑ Comentado (11/08/2026). El upsert buscaba por EMAIL, y eso reabría un agujero justo
+  //   en el peor momento: al entregarle la web al cliente se le cambia el email del admin
+  //   desde Ajustes → Perfil, con lo cual `admin@manhattan.com` deja de existir. Como el
+  //   seed corre en CADA arranque del contenedor (ver el CMD del Dockerfile), en el
+  //   siguiente `docker compose up --build` volvía a CREAR ese admin con la contraseña
+  //   'admin123' — que está publicada en este repo (es público). Quedaban dos admins: el
+  //   del cliente y uno fantasma con credenciales conocidas, sin que nadie lo notara.
+  //
+  //   Ahora el criterio es "¿hay AL MENOS UN admin?" en vez de "¿existe este email?": el
+  //   seed solo crea el admin inicial en una base vacía (primer despliegue). Una vez que
+  //   existe cualquier admin, no vuelve a tocar nada aunque le cambien el email.
+  const adminCount = await prisma.admin.count();
+  if (adminCount === 0) {
+    // Contraseña inicial solo para el primer arranque de una base vacía. Se puede fijar
+    // por variable de entorno (ADMIN_PASSWORD) al desplegar; si no viene, se usa la de
+    // siempre y se avisa fuerte por consola para que se cambie antes de publicar.
+    const initialPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    await prisma.admin.create({
+      data: {
+        email: process.env.ADMIN_EMAIL || 'admin@manhattan.com',
+        password: await bcrypt.hash(initialPassword, 10),
+        name: 'Administrador',
+      },
+    });
+    if (!process.env.ADMIN_PASSWORD) {
+      console.warn('⚠  Admin creado con la contraseña por defecto (admin123). CAMBIALA antes de publicar el sitio.');
+    }
+  }
 
   await prisma.siteSettings.upsert({
     where: { id: 1 },
@@ -70,7 +99,12 @@ async function main() {
   }
 
   console.log('Seed completado');
-  console.log('Admin: admin@manhattan.com / admin123');
+  // console.log('Admin: admin@manhattan.com / admin123');
+  // ↑ Comentado: imprimía las credenciales en cada arranque, aunque el admin ya existiera
+  //   y tuviera otra contraseña. Además de ser información engañosa, dejaba la contraseña
+  //   por defecto escrita en los logs del contenedor (`docker compose logs`), que es un
+  //   lugar más donde queda expuesta. Ahora solo se avisa cuando REALMENTE se creó un
+  //   admin nuevo con la contraseña por defecto (ver el warning de arriba).
 }
 
 main()

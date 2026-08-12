@@ -1,6 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Middleware de subida de CVs de la página pública de postulaciones.
 //
@@ -57,7 +58,19 @@ const storage = multer.diskStorage({
     const rawExt = path.extname(file.originalname).toLowerCase();
     const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : '.pdf';
     const base = slugifyFilename(path.basename(file.originalname, path.extname(file.originalname)));
-    cb(null, `cv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`);
+    // cb(null, `cv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`);
+    // ↑ Comentado (11/08/2026): el tramo aleatorio venía de Math.random() y eran solo 6
+    //   caracteres. Dos problemas. Uno, Math.random() NO es criptográficamente seguro: el
+    //   generador de V8 se puede reconstruir observando unas pocas salidas, así que quien
+    //   subiera un par de CVs propios podía deducir la secuencia y armar los nombres de
+    //   los CVs ajenos. Dos, 6 caracteres es poco margen igual. Y esto importa porque la
+    //   URL del CV ES la llave de acceso: se manda por WhatsApp y quien la tenga entra
+    //   sin credenciales (ver nota en application.controller.js), así que si el nombre es
+    //   adivinable, quedan expuestos los datos personales de todos los postulantes.
+    //   crypto.randomBytes(16) son 128 bits de entropía real: imposible de predecir o
+    //   recorrer a fuerza bruta.
+    const token = crypto.randomBytes(16).toString('hex');
+    cb(null, `cv_${Date.now()}_${token}_${base}${ext}`);
   },
 });
 

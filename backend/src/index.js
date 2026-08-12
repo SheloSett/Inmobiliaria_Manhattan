@@ -42,6 +42,12 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
   setHeaders: (res) => {
     res.setHeader('Content-Disposition', 'attachment');
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    // noindex (12/08/2026): el link al CV es público a propósito —se manda por WhatsApp y
+    // funciona sin credenciales—, y su seguridad depende de que el nombre del archivo sea
+    // imposible de adivinar (128 bits, ver cvUpload.middleware.js). Ese modelo se rompe si
+    // un buscador llega a indexar la URL: dejaría de ser secreta y aparecería en Google.
+    // Este header le dice a Google/Bing que no lo indexen aunque lleguen a la URL.
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   },
 }));
 

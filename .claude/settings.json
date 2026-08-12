@@ -54,7 +54,15 @@
       "PowerShell(\"archivo de prueba borrado\")",
       "Bash(curl -s -o /dev/null -w \"frontend :3000  -> HTTP %{http_code}\\\\n\" http://localhost:3000/)",
       "Bash(curl -s -o /dev/null -w \"api health      -> HTTP %{http_code}\\\\n\" http://localhost:3000/api/health)",
-      "Bash(curl -s -o /dev/null -w \"listado props   -> HTTP %{http_code}\\\\n\" http://localhost:3000/api/properties)"
+      "Bash(curl -s -o /dev/null -w \"listado props   -> HTTP %{http_code}\\\\n\" http://localhost:3000/api/properties)",
+      "PowerShell(git check-ignore -v backend/.env; if \\($?\\) { \"backend/.env esta IGNORADO por git \\(no se pushea\\)\" } else { \"CUIDADO: backend/.env NO esta ignorado\" }; echo \"--- rastreado por git? ---\"; $t = git ls-files backend/.env .env; if \\([string]::IsNullOrEmpty\\($t\\)\\) { \"Ningun .env esta rastreado por git. OK\" } else { \"RASTREADOS: $t\" })",
+      "PowerShell(docker compose logs backend --tail 12 2>&1)",
+      "Bash(curl -s -X POST http://localhost:4000/api/applications/jobs -F 'name=Ana Test' -F email=ana@test.com -F phone=1160479977 -F 'cv=@cv_legit.pdf;type=application/pdf')",
+      "Bash(curl -s -D - -o /dev/null -X POST http://localhost:4000/api/properties/1/contact-click)",
+      "Bash(curl -s -D - -o /dev/null \"http://localhost:4000/uploads/cvs/cv_1786451051665_q3tjqh_informe_columna_26_07_26.pdf\")",
+      "Bash(curl -s -o /dev/null -w \"api health -> HTTP %{http_code}\\\\n\" http://localhost:3000/api/health)",
+      "Bash(curl -s -o /dev/null -w \"propiedades -> HTTP %{http_code}\\\\n\" http://localhost:3000/api/properties)",
+      "Bash(curl -s -o /dev/null -w \"front       -> HTTP %{http_code}\\\\n\" http://localhost:3000/)"
     ]
   }
 }
