@@ -85,8 +85,12 @@ export default function ShareMenu({ url, title, text }) {
         <span className="material-symbols-outlined">share</span>
       </button>
 
+      {/* Alineación (14/08/2026): en mobile el botón queda pegado al borde izquierdo
+          (contenedor items-start), así que con right-0 el panel se desplegaba hacia
+          afuera de la pantalla y se cortaba. Desde md el botón va a la derecha
+          (items-end) y ahí right-0 es lo correcto. */}
       {open && (
-        <div className="absolute right-0 mt-2 w-56 bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0_8px_30px_rgba(0,23,43,0.12)] py-2 z-50">
+        <div className="absolute left-0 md:left-auto md:right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0_8px_30px_rgba(0,23,43,0.12)] py-2 z-50">
           <p className="px-4 py-1 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-[11px]">Compartir en</p>
           {targets.map(t => (
             <a
