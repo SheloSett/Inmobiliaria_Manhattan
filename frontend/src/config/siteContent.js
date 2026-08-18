@@ -251,6 +251,33 @@ export const PAGES = [
       // Email de contacto del footer (nueva columna "Contacto"). Por defecto usa el
       // mismo mail que la página de Contacto.
       { key: 'email', label: 'Email de contacto', type: 'text', default: 'manhattan.inmo0@gmail.com' },
+      // Teléfonos / WhatsApp del footer (17/08/2026). Lista repetible que se muestra
+      // debajo del email, dentro de la misma columna "Contacto". Cada ítem elige si es
+      // un teléfono para llamar (link tel:) o un WhatsApp (link wa.me), con un texto
+      // opcional para aclarar de quién es el número (ej: "Ventas", "Shaul").
+      // Por defecto viene VACÍA para no inventar números: el admin agrega los que quiera
+      // y, si no agrega ninguno, el footer se ve exactamente como antes (solo el email).
+      {
+        key: 'phones',
+        label: 'Teléfonos / WhatsApp',
+        type: 'list',
+        itemLabel: 'Número',
+        itemFields: [
+          {
+            key: 'kind',
+            label: 'Tipo',
+            type: 'select',
+            options: [
+              { value: 'call', label: 'Teléfono (llamar)' },
+              { value: 'whatsapp', label: 'WhatsApp' },
+            ],
+            default: 'call',
+          },
+          { key: 'label', label: 'Texto (opcional, ej: "Ventas")', type: 'text', default: '' },
+          { key: 'number', label: 'Número (con código de país, ej: +5491160479977)', type: 'text', default: '' },
+        ],
+        default: [],
+      },
       // Redes sociales (nueva columna "Seguinos"). Lista repetible: cada red tiene una
       // plataforma (define ícono y color) y el enlace completo. Se pueden agregar/quitar.
       {

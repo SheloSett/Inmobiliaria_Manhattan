@@ -7,7 +7,27 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Inmobiliaria Manhattan</title>
+    <!-- <title>Inmobiliaria Manhattan</title> -->
+    <!-- ↑ Comentado (17/08/2026, al conectar el dominio): era el único título de todo el
+         sitio, así que el home, el catálogo y cada ficha de propiedad aparecían idénticos
+         en Google. Ahora cada página setea el suyo con <Seo /> (components/Seo.jsx); este
+         de acá es solo el valor inicial, el que se ve mientras carga el JS. -->
+    <title>Manhattan Negocios Inmobiliarios — Propiedades en venta y alquiler</title>
+    <meta name="description" content="Inmobiliaria en CABA. Casas, departamentos, locales y terrenos en venta y alquiler. Tasaciones sin cargo y atención personalizada." />
+
+    <!-- Open Graph base (17/08/2026): es la tarjeta que se ve al compartir el link del
+         sitio. Ojo: estos valores fijos son el piso, no la solución completa —los bots de
+         WhatsApp y Facebook no ejecutan JS, así que NO ven lo que setea <Seo /> al navegar.
+         Para que cada propiedad tenga su propia foto y precio al compartirse, el nginx del
+         frontend los desvía al prerender del backend (backend/src/routes/seo.routes.js). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Manhattan Negocios Inmobiliarios" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:title" content="Manhattan Negocios Inmobiliarios — Propiedades en venta y alquiler" />
+    <meta property="og:description" content="Casas, departamentos, locales y terrenos en venta y alquiler en CABA. Tasaciones sin cargo." />
+    <meta property="og:url" content="https://manhattannegociosinmobiliarios.com.ar/" />
+    <meta property="og:image" content="https://manhattannegociosinmobiliarios.com.ar/favicon.png" />
+    <meta name="twitter:card" content="summary" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Playfair Display comentado - reemplazado por Manrope (Manhattan Prestige Design System) -->

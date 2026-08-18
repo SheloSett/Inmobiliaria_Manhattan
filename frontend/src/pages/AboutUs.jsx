@@ -1,5 +1,6 @@
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import Seo from '../components/Seo';
 import { useSiteContent } from '../hooks/useSiteContent';
 
 // Página Nosotros — rediseño Manhattan Prestige basado en Stitch_Templates/aboutUs_Template.
@@ -67,6 +68,11 @@ export default function AboutUs() {
   ];
   return (
     <div className="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+      <Seo
+        title="Nosotros"
+        description="Conocé al equipo de Manhattan Negocios Inmobiliarios: liderazgo y confianza en el mercado inmobiliario de alta gama."
+        path="/nosotros"
+      />
       <PublicNavbar active="Nosotros" />
 
       <main className="flex-grow">

@@ -1,0 +1,26 @@
+# robots.txt — Manhattan Negocios Inmobiliarios (17/08/2026)
+# Se sirve tal cual desde /usr/share/nginx/html/robots.txt (Vite copia public/ al build).
+
+User-agent: *
+Allow: /
+
+# El panel de administración no tiene por qué aparecer en Google. No es una medida de
+# seguridad (robots.txt es público y no bloquea a nadie: el acceso real lo corta el
+# login con JWT), es para que la pantalla de login no salga en los resultados de
+# búsqueda ni compita con las páginas públicas.
+Disallow: /admin
+Disallow: /admin/
+
+# Resultados de búsqueda internos: son el mismo contenido del catálogo con otro orden.
+# Indexarlos genera contenido duplicado, que Google penaliza.
+Disallow: /buscar
+
+# Los CVs de las postulaciones se sirven desde /uploads con un nombre aleatorio de 128
+# bits (modelo "capability URL", ver application.routes.js). El link es público a
+# propósito —se manda por WhatsApp a la inmobiliaria— pero NO tiene que terminar
+# indexado en Google: eso lo volvería encontrable por cualquiera que busque, que es
+# justo lo que la entropía del nombre evita. El backend además manda X-Robots-Tag
+# noindex en esas respuestas; esto es la segunda capa.
+Disallow: /uploads/
+
+Sitemap: https://manhattannegociosinmobiliarios.com.ar/sitemap.xml

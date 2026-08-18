@@ -12,6 +12,9 @@ const contentRoutes = require('./routes/content.routes');
 const catalogRoutes = require('./routes/catalog.routes');
 // Postulaciones laborales (con CV) y solicitudes para abrir una sucursal (10/08/2026).
 const applicationRoutes = require('./routes/application.routes');
+// SEO (17/08/2026, al conectar el dominio): sitemap.xml dinámico y prerender de meta
+// tags para los bots sociales (WhatsApp/Facebook), que no ejecutan JavaScript.
+const seoRoutes = require('./routes/seo.routes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -76,6 +79,10 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/catalogs', catalogRoutes);
 app.use('/api/applications', applicationRoutes);
+// Montado fuera de /api a propósito: no es una API para el frontend, es contenido que
+// consumen Google y los bots sociales. El nginx del frontend le hace proxy solo a
+// /sitemap.xml y (por User-Agent) al prerender; no hay location público para /seo/.
+app.use('/seo', seoRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

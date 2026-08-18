@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import Seo from '../components/Seo';
 import { useSiteContent } from '../hooks/useSiteContent';
 
 // Página de Postulaciones (10/08/2026) — partida en dos mitades horizontales:
@@ -259,6 +260,11 @@ export default function Applications() {
 
   return (
     <div className="bg-background text-on-background font-body-md antialiased">
+      <Seo
+        title="Trabajá con nosotros"
+        description="Sumate al equipo de Manhattan Negocios Inmobiliarios o abrí tu propia sucursal. Enviá tu CV y nos contactamos."
+        path="/postulaciones"
+      />
       <PublicNavbar active="Postulaciones" />
 
       <main>

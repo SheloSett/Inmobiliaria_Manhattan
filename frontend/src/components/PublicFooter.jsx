@@ -59,10 +59,16 @@ const DEV_CREDIT = {
   whatsapp: '5491136557290',
 };
 
+// Deja solo los dígitos de un número (wa.me no acepta "+", espacios ni guiones).
+const onlyDigits = (n) => String(n || '').replace(/\D/g, '');
+
 export default function PublicFooter() {
   const c = useSiteContent('footer');
   // Filtra redes con enlace válido y que tengan ícono conocido.
   const social = (c.social || []).filter((s) => s && s.url && NETWORKS[s.network]);
+  // Teléfonos / WhatsApp de la columna Contacto (editables desde el CMS).
+  // Se descartan los ítems sin número cargado para no dejar links rotos.
+  const phones = (c.phones || []).filter((p) => p && p.number);
 
   return (
     <footer className="bg-primary w-full mt-stack-lg">
@@ -97,6 +103,34 @@ export default function PublicFooter() {
                 {c.email}
               </a>
             )}
+
+            {/* Teléfonos / WhatsApp debajo del email (17/08/2026). Cada número abre
+                una llamada (tel:) o un chat de WhatsApp (wa.me) según su tipo. Si el
+                admin no cargó ninguno, no se renderiza nada y la columna queda igual
+                que antes. */}
+            {phones.map((p, i) => {
+              const isWhatsapp = p.kind === 'whatsapp';
+              const href = isWhatsapp
+                ? `https://wa.me/${onlyDigits(p.number)}`
+                : `tel:${String(p.number).replace(/\s/g, '')}`;
+              return (
+                <a
+                  key={`${p.number}-${i}`}
+                  href={href}
+                  {...(isWhatsapp ? { target: '_blank', rel: 'noreferrer' } : {})}
+                  className="flex items-center gap-2 font-body-md text-body-md text-on-primary-container opacity-80 hover:opacity-100 hover:text-secondary transition-all whitespace-nowrap"
+                >
+                  {isWhatsapp ? (
+                    <svg className="w-[18px] h-[18px] fill-current shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d={NETWORKS.whatsapp.path} />
+                    </svg>
+                  ) : (
+                    <span className="material-symbols-outlined text-[20px]">call</span>
+                  )}
+                  {p.label ? `${p.label}: ${p.number}` : p.number}
+                </a>
+              );
+            })}
           </div>
 
           {/* Redes */}

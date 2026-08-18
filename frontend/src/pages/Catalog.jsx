@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import Seo from '../components/Seo';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useCatalogs } from '../hooks/useCatalogs';
 // La card local se reemplazó por el componente compartido (28/07/2026), para que sea
@@ -283,6 +284,11 @@ export default function Catalog() {
 
   return (
     <div className="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+      <Seo
+        title="Propiedades en venta y alquiler"
+        description="Mirá todas las propiedades disponibles: casas, departamentos, locales, oficinas y terrenos en venta y alquiler en CABA."
+        path="/propiedades"
+      />
       <TopNavBar />
 
       <main className="flex-grow max-w-[1280px] mx-auto w-full px-margin-mobile md:px-margin-desktop">

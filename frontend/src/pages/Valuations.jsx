@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 // import api from '../services/api'; // COMENTADO: ya no se envía a la API, ver nota abajo
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import Seo from '../components/Seo';
 import { useSiteContent } from '../hooks/useSiteContent';
 // Los textos e imagen del hero y de "Por qué elegirnos" son editables desde el admin
 // (Ajustes → Contenido → Tasaciones). Defaults en config/siteContent.js.
@@ -114,6 +115,11 @@ export default function Valuations() {
 
   return (
     <div className="bg-background text-on-background font-body-md antialiased">
+      <Seo
+        title="Tasaciones sin cargo"
+        description="Tasamos tu propiedad sin cargo y sin compromiso. Valuación profesional de casas, departamentos y locales en CABA."
+        path="/tasaciones"
+      />
       <PublicNavbar active="Tasaciones" />
 
       <main>

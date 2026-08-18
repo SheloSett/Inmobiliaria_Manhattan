@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 // import api from '../services/api'; // COMENTADO: la consulta ya no se guarda en la BD, va por WhatsApp (ver handleSubmit)
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import Seo from '../components/Seo';
 import { useSiteContent } from '../hooks/useSiteContent';
 
 // Página de Contacto — rediseño Manhattan Prestige basado en Stitch_Templates/contact_Template.
@@ -112,6 +113,11 @@ export default function ContactPage() {
 
   return (
     <div className="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+      <Seo
+        title="Contacto"
+        description="Comunicate con Manhattan Negocios Inmobiliarios. Consultas por compra, venta y alquiler de propiedades en CABA."
+        path="/contacto"
+      />
       <PublicNavbar active="Contacto" />
 
       {/* Espaciado vertical reducido (20/07/2026) para que la página entre sin scroll:

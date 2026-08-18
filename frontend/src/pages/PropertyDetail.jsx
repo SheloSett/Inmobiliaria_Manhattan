@@ -6,6 +6,7 @@ import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 import ImageCarousel from '../components/ImageCarousel';
 import ShareMenu from '../components/ShareMenu';
+import Seo from '../components/Seo';
 import { useSiteContent } from '../hooks/useSiteContent';
 
 const OPERATION_LABELS = { SALE: 'VENTA', RENT: 'ALQUILER' };
@@ -376,6 +377,22 @@ export default function PropertyDetail() {
 
   return (
     <div className="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+      {/* SEO (17/08/2026): título propio por propiedad. Antes todas las fichas se
+          llamaban igual ("Inmobiliaria Manhattan") en Google y en la pestaña del
+          navegador. Se arma con tipo + operación + zona + precio, que es como la gente
+          busca ("local en alquiler en Flores"), no con el título interno que le pone el
+          admin. Solo se renderiza con la propiedad ya cargada, para no escribir un
+          título a medias mientras llega la respuesta.
+          Ojo: esto lo ve Google (ejecuta JS), NO WhatsApp. La tarjeta de WhatsApp la
+          arma el prerender del backend (backend/src/routes/seo.routes.js). */}
+      {property && (
+        <Seo
+          title={`${typeLabel} en ${operationLabel} en ${property.neighborhood ? `${property.neighborhood}, ${property.city}` : property.city} — ${property.currency || 'USD'} ${Number(property.price).toLocaleString('es-AR')}`}
+          description={String(property.description || '').replace(/\s+/g, ' ').trim().slice(0, 155)}
+          image={(property.images?.find((i) => i.isPrimary && i.type === 'image') || property.images?.find((i) => i.type === 'image'))?.url}
+          path={`/propiedades/${property.id}`}
+        />
+      )}
       <TopNavBar />
 
       <main className="flex-grow w-full max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-stack-md flex flex-col gap-stack-lg">

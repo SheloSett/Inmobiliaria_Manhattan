@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import Seo from '../components/Seo';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { useCatalogs } from '../hooks/useCatalogs';
 // Card de propiedad compartida (28/07/2026): la card local de destacadas se reemplazó por
@@ -154,6 +155,11 @@ export default function Home() {
       {/* TopNavBar: reemplazado por el componente compartido PublicNavbar para que el navbar
           sea idéntico en todas las páginas públicas. El markup inline original quedó comentado
           al final de este archivo. */}
+      <Seo
+        title="Manhattan Negocios Inmobiliarios — Propiedades en venta y alquiler"
+        description="Inmobiliaria en CABA. Casas, departamentos, locales y terrenos en venta y alquiler. Tasaciones sin cargo y atención personalizada."
+        path="/"
+      />
       <PublicNavbar active="Inicio" />
 
       {/* Hero Section */}
