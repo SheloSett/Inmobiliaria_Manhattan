@@ -22,7 +22,24 @@ const PORT = process.env.PORT || 4000;
 // (el nginx) y toma la IP real del X-Forwarded-For. En local (sin proxy) no molesta.
 app.set('trust proxy', 1);
 
-app.use(cors({ origin: '*' }));
+// app.use(cors({ origin: '*' }));
+// ↑ Comentado (17/08/2026, al configurar el dominio propio): `origin: '*'` dejaba que
+//   CUALQUIER página de internet le hiciera pedidos a esta API desde el navegador de un
+//   visitante. Estaba abierto a propósito mientras la web se servía por IP cruda y no
+//   sabíamos qué dominio la iba a servir (ver DEPLOY.md paso 6). Ahora que hay dominio,
+//   se restringe a la lista blanca de CORS_ORIGIN.
+//   Nota: la web en sí NO necesita CORS —el nginx del frontend hace proxy de /api, así
+//   que el navegador ve todo en el mismo origen—. Esto solo afecta a clientes externos.
+//   Si CORS_ORIGIN no está definido (desarrollo local), se mantiene el comportamiento
+//   permisivo de antes para no romper el flujo de trabajo con Vite en el 5173/3000.
+const corsOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: corsOrigins.length > 0 ? corsOrigins : '*',
+}));
 app.use(express.json());
 
 // app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

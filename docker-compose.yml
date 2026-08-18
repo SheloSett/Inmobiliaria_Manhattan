@@ -44,6 +44,11 @@ services:
       JWT_SECRET: "${JWT_SECRET:?definí JWT_SECRET en el .env de la raíz, generalo con openssl rand -hex 32}"
       PORT: 4000
       NODE_ENV: production
+      # CORS_ORIGIN (17/08/2026): lista blanca de orígenes permitidos, separados por coma
+      #   (en el VPS: https://manhattannegociosinmobiliarios.com.ar más el www). Si queda vacío, el
+      #   backend cae al comportamiento permisivo de antes ('*'), que es lo que se quiere
+      #   en desarrollo local. En el VPS SÍ hay que definirlo en el .env de la raíz.
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
@@ -70,7 +75,17 @@ services:
       # ↑ Comentado: el puerto público ahora es configurable. En desarrollo
       #   local sigue siendo 3000 (default); en el VPS se define
       #   FRONTEND_PORT=80 en el .env raíz para servir la web en el puerto 80.
-      - "${FRONTEND_PORT:-3000}:80"
+      # - "${FRONTEND_PORT:-3000}:80"
+      # ↑ Comentado (17/08/2026, al configurar el dominio): sin dirección de bind, Docker
+      #   publica el puerto en 0.0.0.0, o sea EXPUESTO A INTERNET. Con el dominio andando,
+      #   el sitio entra por el nginx del sistema (80/443) que hace proxy a este puerto en
+      #   localhost, así que ya no hace falta que sea alcanzable desde afuera.
+      #   Ojo, esto NO se arregla con UFW: Docker escribe sus propias reglas de iptables en
+      #   la cadena DOCKER, que se evalúan ANTES que las de UFW. Un `ufw deny 8080` no tapa
+      #   un puerto publicado por Docker — la forma correcta es atarlo a 127.0.0.1, que es
+      #   lo que hace FRONTEND_BIND. En local queda en 0.0.0.0 (default) para no cambiar
+      #   nada del flujo de desarrollo actual.
+      - "${FRONTEND_BIND:-0.0.0.0}:${FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
     restart: unless-stopped
