@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useUnreadApplications } from '../hooks/useUnreadApplications';
 // MessageSquare y BarChart3 comentados: eran los íconos de Consultas y Reportes (ver abajo)
 import { LayoutDashboard, Building2, Tags, ChevronDown, /* MessageSquare, BarChart3, */ Settings, LogOut, Menu, X, UserPlus } from 'lucide-react';
 
@@ -23,7 +24,9 @@ const navItems = [
   // { to: '/admin/reports', icon: BarChart3, label: 'Reportes' },
   // Postulaciones (10/08/2026): bandeja de CVs recibidos + solicitudes para abrir una
   // sucursal, ambas cargadas desde la página pública /postulaciones.
-  { to: '/admin/applications', icon: UserPlus, label: 'Postulaciones' },
+  // `badge: 'applications'` (17/08/2026) le dice al layout que este ítem muestra el
+  // contador de pendientes (postulaciones + solicitudes de sucursal sin leer).
+  { to: '/admin/applications', icon: UserPlus, label: 'Postulaciones', badge: 'applications' },
   { to: '/admin/settings', icon: Settings, label: 'Ajustes' },
 ];
 
@@ -33,9 +36,25 @@ const linkClass = ({ isActive }) =>
     isActive ? 'bg-secondary text-on-secondary' : 'text-on-primary-container hover:bg-primary-container hover:text-on-primary'
   }`;
 
+// Globo con el número de pendientes del ítem (17/08/2026). No se renderiza si el
+// contador es 0, así el menú queda igual que antes cuando no hay nada por revisar.
+// Arriba de 99 muestra "99+" para que no se estire el ancho del sidebar.
+function NavBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span
+      title={`${count} sin leer`}
+      className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-secondary text-on-secondary font-label-md text-[11px] leading-none flex items-center justify-center flex-shrink-0"
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 // Ítem del menú. Si tiene `children`, muestra un chevron para plegar/desplegar la
 // sub-lista (arranca abierta). El label sigue navegando; el chevron solo colapsa.
-function NavItem({ item }) {
+// `badgeCount` (17/08/2026) es el número de pendientes que muestra a la derecha.
+function NavItem({ item, badgeCount = 0 }) {
   const { to, icon: Icon, label, children } = item;
   const [open, setOpen] = useState(true);
   const location = useLocation();
@@ -45,6 +64,7 @@ function NavItem({ item }) {
       <NavLink to={to} className={linkClass}>
         <Icon size={18} />
         {label}
+        <NavBadge count={badgeCount} />
       </NavLink>
     );
   }
@@ -66,6 +86,7 @@ function NavItem({ item }) {
         <Link to={to} className="flex-1 flex items-center gap-3 px-4 py-3 font-label-md text-label-md min-w-0">
           <Icon size={18} />
           {label}
+          <NavBadge count={badgeCount} />
         </Link>
         <button
           type="button"
@@ -110,6 +131,12 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = () => setSidebarOpen(false);
 
+  // Pendientes de Postulaciones (postulaciones + solicitudes de sucursal sin leer).
+  // Se refresca al cambiar de pantalla, cada 60 s y cuando el panel marca algo como
+  // leído o borra un pendiente (ver hooks/useUnreadApplications.js).
+  const unreadApplications = useUnreadApplications();
+  const badgeCounts = { applications: unreadApplications.total };
+
   const handleLogout = () => { logout(); navigate('/admin/login'); };
 
   // bg-gray-100 reemplazado por token del design system Manhattan Prestige
@@ -145,7 +172,7 @@ export default function AdminLayout() {
         {/* onClick cierra el drawer al tocar cualquier link (mobile); en desktop no hace nada. */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto" onClick={closeSidebar}>
           {navItems.map((item) => (
-            <NavItem key={item.to} item={item} />
+            <NavItem key={item.to} item={item} badgeCount={badgeCounts[item.badge] || 0} />
           ))}
         </nav>
         <div className="p-4 border-t border-primary-container">
@@ -163,8 +190,16 @@ export default function AdminLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra superior con hamburguesa (solo mobile) */}
         <header className="lg:hidden sticky top-0 z-30 bg-primary text-on-primary flex items-center gap-3 px-4 h-14 shrink-0">
-          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú">
+          {/* En mobile el sidebar está oculto, así que el contador de pendientes se
+              refleja también sobre la hamburguesa (17/08/2026): si no, habría que abrir
+              el menú para enterarse de que hay postulaciones sin leer. */}
+          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú" className="relative">
             <Menu size={24} />
+            {badgeCounts.applications > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-secondary text-on-secondary font-label-md text-[10px] leading-none flex items-center justify-center">
+                {badgeCounts.applications > 99 ? '99+' : badgeCounts.applications}
+              </span>
+            )}
           </button>
           <span className="font-headline-md text-headline-md text-on-primary">Manhattan</span>
         </header>

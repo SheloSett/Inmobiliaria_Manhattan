@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Search, Mail, Phone, X, FileText, Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+// Avisa al sidebar del admin que cambió la cantidad de pendientes, para que su
+// contador se actualice al instante (17/08/2026).
+import { notifyApplicationsUpdated } from '../../hooks/useUnreadApplications';
 
 // Panel de Postulaciones (10/08/2026). Dos solapas sobre la misma pantalla:
 //   "Postulaciones" → JobApplication (con CV adjunto)
@@ -406,6 +409,7 @@ export default function AdminApplications() {
         setItems(prev => prev.filter(i => i.id !== id));
         setTotal(prev => Math.max(0, prev - 1));
       }
+      notifyApplicationsUpdated();
     } catch {
       // silencioso
     }
@@ -427,6 +431,7 @@ export default function AdminApplications() {
       if (!item.read) {
         setUnread(prev => Math.max(0, prev - 1));
         setOtherUnread(prev => ({ ...prev, [tab]: Math.max(0, prev[tab] - 1) }));
+        notifyApplicationsUpdated();
       }
       if (selected?.id === item.id) setSelected(null);
       // toast.success('Eliminada');
