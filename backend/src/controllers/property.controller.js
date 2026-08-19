@@ -1,7 +1,38 @@
 const { PrismaClient } = require('@prisma/client');
+const jwt = require('jsonwebtoken');
 const presence = require('../services/presence.service');
 
 const prisma = new PrismaClient();
+
+// Valores válidos del campo "llave" (ver keyStatus en schema.prisma).
+const KEY_STATUS_VALUES = ['WITH', 'WITHOUT', 'HIDDEN'];
+
+// ¿La request viene del panel admin (token JWT válido)? Se usa para decidir si se
+// pueden ver las propiedades PAUSADAS (published = false). No es un middleware
+// porque estas rutas son públicas: acá el token es opcional, solo amplía lo que se
+// devuelve. Sin token (o con uno inválido) la respuesta es la del visitante común.
+function isAdminRequest(req) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return false;
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Normaliza el campo "llave" que llega del form. Devuelve null si el valor no sirve
+// (el controller responde 400: es un campo obligatorio desde el 19/08/2026).
+// `legacyHasKey` mantiene la compatibilidad con el booleano viejo por si alguna
+// request todavía manda hasKey en vez de keyStatus.
+function parseKeyStatus(raw, legacyHasKey) {
+  if (raw === undefined || raw === '') {
+    if (legacyHasKey === undefined) return null;
+    return legacyHasKey === 'true' || legacyHasKey === true ? 'WITH' : 'WITHOUT';
+  }
+  return KEY_STATUS_VALUES.includes(raw) ? raw : null;
+}
 
 // Adjunta a cada propiedad las etiquetas legibles de su operación y tipo, buscándolas
 // en los catálogos (operation/type son `value`, ej "SALE"). Así las páginas públicas
@@ -56,8 +87,14 @@ async function recomputePrimary(propertyId) {
 
 exports.getAll = async (req, res) => {
   try {
-    const { operation, type, status, featured, search, page = 1, limit = 12 } = req.query;
+    const { operation, type, status, featured, search, includeUnpublished, page = 1, limit = 12 } = req.query;
     const where = {};
+    // Pausadas (19/08/2026): por defecto NO se listan. Solo las incluye el panel admin,
+    // que pide includeUnpublished=true Y manda un token válido. Se exigen las dos cosas:
+    // el parámetro solo, sin token, no alcanza (si no, cualquiera vería las pausadas
+    // agregándolo a la URL), y el token solo tampoco (así el admin, aunque esté logueado,
+    // ve el sitio público igual que un visitante).
+    if (!(includeUnpublished === 'true' && isAdminRequest(req))) where.published = true;
     if (operation) where.operation = operation;
     if (type) where.type = type;
     if (status) where.status = status;
@@ -98,6 +135,14 @@ exports.getById = async (req, res) => {
       },
     });
     if (!property) return res.status(404).json({ error: 'Propiedad no encontrada' });
+    // Pausada (19/08/2026): para el público no existe, ni siquiera entrando con el id
+    // en la URL o con un link viejo guardado. Se responde el MISMO 404 que una
+    // propiedad inexistente (no un 403) para no delatar que el id existe; el frontend
+    // manda al visitante al catálogo. El panel admin (token válido) sí la ve, porque
+    // necesita poder abrirla para editarla y volver a publicarla.
+    if (!property.published && !isAdminRequest(req)) {
+      return res.status(404).json({ error: 'Propiedad no encontrada' });
+    }
     // Loguea la vista solo cuando viene de la ficha pública (?src=public). El admin
     // llama a este mismo endpoint para precargar el formulario de edición y esa
     // carga no debe contar como una vista real. Agregado 28/07/2026 para las
@@ -165,9 +210,17 @@ exports.create = async (req, res) => {
   try {
     const {
       title, description, price, currency, operation, type, status,
-      bedrooms, bathrooms, area, garage, hasKey, address, city, neighborhood,
-      lat, lng, featured, amenityIds, expenses, expensesCurrency,
+      bedrooms, bathrooms, area, garage, hasKey, keyStatus, address, city, neighborhood,
+      lat, lng, featured, published, amenityIds, expenses, expensesCurrency,
     } = req.body;
+
+    // "Llave" es obligatoria al crear (19/08/2026): hay que elegir explícitamente entre
+    // con llave / sin llave / no mostrar, para que "no mostrar" sea una decisión y no
+    // el resultado de olvidarse de tildar un check.
+    const key = parseKeyStatus(keyStatus, hasKey);
+    if (!key) {
+      return res.status(400).json({ error: 'Elegí una opción en "Llave"', message: 'Elegí una opción en "Llave"' });
+    }
 
     const ids = parseAmenityIds(amenityIds);
     const property = await prisma.property.create({
@@ -185,12 +238,17 @@ exports.create = async (req, res) => {
         bathrooms: bathrooms ? parseInt(bathrooms) : null,
         area: area ? parseFloat(area) : null,
         garage: garage === 'true' || garage === true,
-        hasKey: hasKey === 'true' || hasKey === true,
+        keyStatus: key,
+        // hasKey queda sincronizado con keyStatus (columna vieja, ver schema.prisma).
+        hasKey: key === 'WITH',
         address, city,
         neighborhood: neighborhood || null,
         lat: lat ? parseFloat(lat) : null,
         lng: lng ? parseFloat(lng) : null,
         featured: featured === 'true' || featured === true,
+        // Al crear, una propiedad nace publicada salvo que el form mande published=false
+        // (el selector "Pausada" del panel).
+        published: published === undefined ? true : !(published === 'false' || published === false),
         ...(ids.length ? { amenities: { connect: ids.map((id) => ({ id })) } } : {}),
       },
     });
@@ -230,8 +288,8 @@ exports.update = async (req, res) => {
     const id = Number(req.params.id);
     const {
       title, description, price, currency, operation, type, status,
-      bedrooms, bathrooms, area, garage, hasKey, address, city, neighborhood,
-      lat, lng, featured, deleteImages, amenityIds, imageOrder,
+      bedrooms, bathrooms, area, garage, hasKey, keyStatus, address, city, neighborhood,
+      lat, lng, featured, published, deleteImages, amenityIds, imageOrder,
       expenses, expensesCurrency,
     } = req.body;
 
@@ -253,13 +311,25 @@ exports.update = async (req, res) => {
     if (bathrooms !== undefined) data.bathrooms = bathrooms ? parseInt(bathrooms) : null;
     if (area !== undefined) data.area = area ? parseFloat(area) : null;
     if (garage !== undefined) data.garage = garage === 'true' || garage === true;
-    if (hasKey !== undefined) data.hasKey = hasKey === 'true' || hasKey === true;
+    // Llave: si el form la manda (siempre lo hace), tiene que ser un valor válido.
+    // hasKey se mantiene sincronizado con keyStatus (columna vieja, ver schema.prisma).
+    if (keyStatus !== undefined || hasKey !== undefined) {
+      const key = parseKeyStatus(keyStatus, hasKey);
+      if (!key) {
+        return res.status(400).json({ error: 'Elegí una opción en "Llave"', message: 'Elegí una opción en "Llave"' });
+      }
+      data.keyStatus = key;
+      data.hasKey = key === 'WITH';
+    }
     if (address !== undefined) data.address = address;
     if (city !== undefined) data.city = city;
     if (neighborhood !== undefined) data.neighborhood = neighborhood;
     if (lat !== undefined) data.lat = lat ? parseFloat(lat) : null;
     if (lng !== undefined) data.lng = lng ? parseFloat(lng) : null;
     if (featured !== undefined) data.featured = featured === 'true' || featured === true;
+    // Pausar / republicar (19/08/2026): tanto desde el form de edición como desde el
+    // botón rápido de la lista de propiedades del panel.
+    if (published !== undefined) data.published = !(published === 'false' || published === false);
 
     // 1) Eliminar las marcadas para borrar.
     if (deleteImages) {

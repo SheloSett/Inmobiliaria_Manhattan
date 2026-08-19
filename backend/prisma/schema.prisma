@@ -40,13 +40,31 @@ model Property {
   garage        Boolean       @default(false)
   // hasKey ("con llave"): indica que la inmobiliaria tiene la llave para mostrar la
   // propiedad. Agregado el 27/07/2026 (migración property_has_key).
+  // REEMPLAZADO por keyStatus (19/08/2026): la columna NO se elimina (regla del
+  // proyecto) y se sigue escribiendo en sincronía (hasKey = keyStatus === 'WITH')
+  // por si algo la lee todavía, pero la fuente de verdad es keyStatus.
   hasKey        Boolean       @default(false)
+  // keyStatus (19/08/2026): reemplaza al booleano hasKey por TRES estados, porque con
+  // un check el "no tildado" equivalía a gritar "SIN LLAVE" en la card, y en muchas
+  // propiedades el dato simplemente no importa.
+  //   "WITH"    → Con llave  (ícono de llave en la card y "Sí" en la ficha)
+  //   "WITHOUT" → Sin llave  (sello "SIN LLAVE" en la card y "No" en la ficha)
+  //   "HIDDEN"  → No mostrar (no aparece en ningún lado)
+  // Es string (no enum) por el mismo criterio que operation/type: agregar valores no
+  // obliga a migrar tipos en Postgres. El default existe solo para las filas viejas:
+  // la API lo exige explícitamente al crear/editar.
+  keyStatus     String        @default("WITHOUT")
   address       String
   city          String
   neighborhood  String?
   lat           Float?
   lng           Float?
   featured      Boolean       @default(false)
+  // published (19/08/2026): permite PAUSAR una publicación sin borrarla. En false la
+  // propiedad desaparece de todo lo público (listados, búsqueda, sitemap y la propia
+  // ficha, que devuelve 404 y manda al catálogo), pero sigue existiendo en el panel
+  // con sus fotos y sus métricas para poder republicarla cuando se quiera.
+  published     Boolean       @default(true)
   images        PropertyImage[]
   contacts      Contact[]
   amenities     Amenity[]     @relation("PropertyAmenities")

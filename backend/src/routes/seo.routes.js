@@ -124,8 +124,10 @@ router.get('/sitemap.xml', async (req, res) => {
     // Solo se listan las propiedades que un visitante puede ver y que siguen
     // disponibles. Mandarle a Google fichas ya vendidas o alquiladas hace que indexe
     // páginas que después va a marcar como contenido de baja calidad.
+    // published: true (19/08/2026) — una publicación pausada no se le manda a Google:
+    // su ficha devuelve 404 y quedaría indexada una URL muerta.
     const properties = await prisma.property.findMany({
-      where: { status: { in: ['AVAILABLE', 'RESERVED'] } },
+      where: { published: true, status: { in: ['AVAILABLE', 'RESERVED'] } },
       select: { id: true, updatedAt: true },
       orderBy: { updatedAt: 'desc' },
     });
@@ -226,7 +228,11 @@ router.get('/prerender/*', async (req, res) => {
         include: { images: { orderBy: { order: 'asc' } } },
       });
 
-      if (property) {
+      // property.published (19/08/2026): si la publicación está pausada se ignora y cae
+      // al meta genérico del sitio, para que un link compartido en WhatsApp/Facebook no
+      // siga mostrando el preview con la foto y el precio de una propiedad que ya no
+      // está publicada (la ficha, además, redirige al catálogo).
+      if (property && property.published) {
         // Las etiquetas legibles de operación y tipo viven en los catálogos editables
         // (Ajustes → Catálogos), no en la propiedad. Si el catálogo no tiene el valor
         // (por ejemplo si lo borraron), se cae al valor crudo en vez de romper.

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { propertyThumbnail } from '../utils/media';
 
@@ -20,34 +21,76 @@ function formatPrice(currency, price, operation) {
   return operation === 'RENT' ? `${formatted}/mes` : formatted;
 }
 
+// Estado de la llave (19/08/2026): keyStatus reemplazó al booleano hasKey.
+// Fallback al booleano viejo por si alguna respuesta cacheada todavía no lo trae.
+function keyStatusOf(property) {
+  if (property.keyStatus) return property.keyStatus;
+  return property.hasKey ? 'WITH' : 'WITHOUT';
+}
+
 export default function PropertyCard({ property }) {
-  // Thumbnail: foto principal → primera foto → poster del video (si solo hay videos).
-  const primaryImg = propertyThumbnail(property.images);
+  // Fotos de la card (19/08/2026): antes se mostraba SOLO la portada. Ahora se pueden
+  // pasar todas con flechitas, sin entrar a la ficha. Se usan únicamente las FOTOS
+  // (los videos no se reproducen acá); si la propiedad solo tiene videos, queda el
+  // poster del primero como imagen única, igual que antes.
+  const photos = (property.images ?? []).filter((i) => i.type !== 'video' && i.url).map((i) => i.url);
+  const fallback = propertyThumbnail(property.images);
+  const slides = photos.length ? photos : (fallback ? [fallback] : []);
+  const [index, setIndex] = useState(0);
+
+  // Las flechas van ENCIMA del link que cubre la foto, así que frenar la propagación
+  // alcanza para que pasar de foto no navegue a la ficha.
+  const go = (e, delta) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIndex((i) => (i + delta + slides.length) % slides.length);
+  };
+
   // Prefiere el label enriquecido del backend (catálogo gestionable); fallback al mapa.
   const opLabel = property.operationLabel ?? OPERATION_LABELS[property.operation] ?? property.operation;
   const opStyle = property.operation === 'SALE'
     ? 'bg-secondary text-on-secondary'
     : 'bg-primary text-on-primary';
+  const keyStatus = keyStatusOf(property);
 
   return (
     <article className="bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-shadow duration-300 group overflow-hidden rounded-lg flex flex-col">
       {/* Imagen */}
       <div className="relative h-56 overflow-hidden flex-shrink-0">
-        {primaryImg ? (
-          <img
-            alt={property.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            src={primaryImg}
-          />
+        {slides.length > 0 ? (
+          slides.map((src, i) => (
+            <img
+              key={`${i}-${src}`}
+              alt={property.title}
+              // Todas las fotos se apilan y se cruzan por opacidad. La activa queda
+              // visible; el resto no recibe clics.
+              className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                i === index ? 'opacity-100' : 'opacity-0'
+              }`}
+              src={src}
+              loading={i === 0 ? undefined : 'lazy'}
+            />
+          ))
         ) : (
           <div className="w-full h-full bg-surface-container flex items-center justify-center">
             <span className="material-symbols-outlined text-[48px] text-outline">image_not_supported</span>
           </div>
         )}
+
+        {/* Capa clickeable sobre la foto (19/08/2026): antes solo el CUERPO de la card
+            entraba a la ficha y tocar la foto no hacía nada, que es justo donde la
+            gente toca primero. Va como <Link> absoluto en vez de envolver toda la card
+            para no meter los botones de las flechas adentro de un <a>. */}
+        <Link
+          to={`/propiedades/${property.id}`}
+          aria-label={`Ver ${property.title}`}
+          className="absolute inset-0 z-10"
+        />
+
         {/* Badges arriba a la IZQUIERDA: operación + estado (apilados). El estado se movió
             acá (antes iba arriba a la derecha) para dejar libre la esquina superior derecha
             para el sello "SIN LLAVE" (28/07/2026). */}
-        <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
+        <div className="absolute top-4 left-4 flex flex-col items-start gap-2 z-20 pointer-events-none">
           <div className={`px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded ${opStyle}`}>
             {opLabel}
           </div>
@@ -60,11 +103,46 @@ export default function PropertyCard({ property }) {
         {/* Etiqueta "SIN LLAVE": cuando la propiedad NO tiene llave, se muestra en la esquina
             superior derecha con el MISMO estilo plano que las etiquetas de la izquierda
             (operación/estado): sin rotación, sin borde ni sombra (28/07/2026). Cuando SÍ
-            tiene llave, se sigue mostrando el ícono de llave en la fila de specs. */}
-        {!property.hasKey && (
-          <div className="absolute top-4 right-4 bg-secondary text-on-secondary px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded">
+            tiene llave, se sigue mostrando el ícono de llave en la fila de specs.
+            Con keyStatus "HIDDEN" no se muestra ni el sello ni el ícono (19/08/2026). */}
+        {keyStatus === 'WITHOUT' && (
+          <div className="absolute top-4 right-4 z-20 pointer-events-none bg-secondary text-on-secondary px-3 py-1 font-label-md text-[12px] uppercase tracking-wider rounded">
             Sin llave
           </div>
+        )}
+
+        {/* Flechas + puntitos para pasar las fotos. Sin autoplay: con una grilla entera
+            de cards rotando sola el catálogo queda parpadeando. Son botones grandes
+            (40px) porque también se usan con el dedo. */}
+        {slides.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => go(e, -1)}
+              aria-label="Foto anterior"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-surface/80 backdrop-blur-sm text-primary flex items-center justify-center shadow-md hover:bg-surface transition-colors"
+            >
+              <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => go(e, 1)}
+              aria-label="Foto siguiente"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-surface/80 backdrop-blur-sm text-primary flex items-center justify-center shadow-md hover:bg-surface transition-colors"
+            >
+              <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+            </button>
+            <div className="absolute bottom-2 left-0 right-0 z-20 pointer-events-none flex justify-center gap-1.5">
+              {slides.map((src, i) => (
+                <span
+                  key={`${i}-${src}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === index ? 'w-4 bg-surface' : 'w-1.5 bg-surface/60'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -105,7 +183,7 @@ export default function PropertyCard({ property }) {
             </div>
           )}
           {/* "Con llave": ícono de llave, solo si la propiedad la tiene. */}
-          {property.hasKey && (
+          {keyStatus === 'WITH' && (
             <div className="flex items-center gap-1 text-secondary" title="Con llave">
               <span className="material-symbols-outlined text-[20px]">key</span>
             </div>

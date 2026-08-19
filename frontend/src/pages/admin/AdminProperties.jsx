@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, Trash2, X, Upload } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Upload, Pause, Play } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { propertyThumbnail } from '../../utils/media';
 
@@ -43,7 +44,17 @@ const EMPTY_FORM = {
 const PAGE_SIZE = 8;
 
 // --- StatusBadge ---
-function StatusBadge({ status }) {
+// Muestra el estado comercial (Publicada/Reservada/…) y, si la publicación está
+// PAUSADA (published = false, 19/08/2026), lo tapa con ese aviso: es lo primero que
+// hay que ver en la lista, porque una propiedad pausada no existe para el visitante.
+function StatusBadge({ status, published }) {
+  if (published === false) {
+    return (
+      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full font-label-md text-xs whitespace-nowrap bg-surface-container-highest text-on-surface-variant border border-outline-variant">
+        <Pause size={12} /> Pausada
+      </span>
+    );
+  }
   const badge = STATUS_BADGE[status] ?? { label: status, cls: 'bg-surface-container-highest text-on-surface-variant' };
   return (
     <span className={`inline-flex items-center px-3 py-1 rounded-full font-label-md text-xs whitespace-nowrap ${badge.cls}`}>
@@ -406,11 +417,16 @@ export default function AdminProperties() {
   // const [modalProp, setModalProp]     = useState(null);
   const [deleteProp, setDeleteProp]   = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // id de la propiedad cuyo pausar/republicar está en curso (deshabilita ese botón).
+  const [togglingId, setTogglingId] = useState(null);
 
   const fetchProperties = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/properties');
+      // includeUnpublished (19/08/2026): el panel también tiene que ver las PAUSADAS,
+      // que el endpoint oculta por defecto. El backend igual exige token válido para
+      // devolverlas, así que el parámetro solo no sirve desde afuera.
+      const res = await api.get('/properties', { params: { includeUnpublished: true } });
       setProperties(res.data.properties ?? []);
     } catch {
       // el interceptor de api.js maneja el 401; otros errores dejan la lista vacía
@@ -431,6 +447,26 @@ export default function AdminProperties() {
   // Paginación
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Pausar / republicar desde la lista (19/08/2026). Manda solo el campo `published`:
+  // el update del backend toca únicamente los campos que recibe, así que no hace falta
+  // reenviar el resto de la propiedad ni sus fotos. El estado local se actualiza en el
+  // momento para no recargar toda la tabla por un toggle.
+  const togglePublished = async (prop) => {
+    const next = prop.published === false;
+    setTogglingId(prop.id);
+    try {
+      const fd = new FormData();
+      fd.append('published', String(next));
+      await api.put(`/properties/${prop.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setProperties(prev => prev.map(p => (p.id === prop.id ? { ...p, published: next } : p)));
+      toast.success(next ? 'Propiedad publicada de nuevo' : 'Publicación pausada');
+    } catch {
+      toast.error('No se pudo cambiar el estado de la publicación');
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleteLoading(true);
@@ -603,12 +639,22 @@ export default function AdminProperties() {
 
                 {/* Estado */}
                 <td className="py-4 px-6">
-                  <StatusBadge status={prop.status} />
+                  <StatusBadge status={prop.status} published={prop.published} />
                 </td>
 
                 {/* Acciones */}
                 <td className="py-4 px-6 text-right">
                   <div className="flex justify-end gap-1">
+                    {/* Pausar / republicar (19/08/2026): saca la propiedad de la web sin
+                        borrarla. El mismo selector está dentro del form de edición. */}
+                    <button
+                      onClick={() => togglePublished(prop)}
+                      disabled={togglingId === prop.id}
+                      className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded transition-colors disabled:opacity-40"
+                      title={prop.published === false ? 'Volver a publicar' : 'Pausar publicación'}
+                    >
+                      {prop.published === false ? <Play size={18} /> : <Pause size={18} />}
+                    </button>
                     {/* Antes abría el modal (setModalProp(prop)); ahora navega a la página de edición */}
                     <button
                       onClick={() => navigate(`/admin/properties/${prop.id}/edit`)}
@@ -672,7 +718,7 @@ export default function AdminProperties() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-label-md text-[15px] text-primary line-clamp-2 leading-snug">{prop.title}</div>
-                  <div className="flex-shrink-0"><StatusBadge status={prop.status} /></div>
+                  <div className="flex-shrink-0"><StatusBadge status={prop.status} published={prop.published} /></div>
                 </div>
                 <div className="text-xs text-on-surface-variant flex items-start gap-1 mt-1">
                   <span className="material-symbols-outlined text-[14px] mt-[1px]">location_on</span>
@@ -693,6 +739,15 @@ export default function AdminProperties() {
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-colors"
                   >
                     <Edit2 size={16} /> Editar
+                  </button>
+                  {/* Pausar / republicar (19/08/2026) */}
+                  <button
+                    onClick={() => togglePublished(prop)}
+                    disabled={togglingId === prop.id}
+                    className="p-2 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-colors disabled:opacity-40"
+                    title={prop.published === false ? 'Volver a publicar' : 'Pausar publicación'}
+                  >
+                    {prop.published === false ? <Play size={18} /> : <Pause size={18} />}
                   </button>
                   <button
                     onClick={() => setDeleteProp(prop)}

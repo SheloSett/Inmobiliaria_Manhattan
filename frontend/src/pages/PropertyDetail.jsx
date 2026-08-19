@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import PublicNavbar from '../components/PublicNavbar';
@@ -138,6 +138,7 @@ function LoadingSkeleton() {
 
 export default function PropertyDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   // Números de la ficha de propiedad, editables desde la sección Propiedades
   // (Ajustes → Contenido → Propiedades). Fallback al .env/hardcodeado si están vacíos.
   const propsContent = useSiteContent('properties');
@@ -164,11 +165,19 @@ export default function PropertyDetail() {
     api.get(`/properties/${id}?src=public`)
       .then(res => setProperty(res.data))
       .catch(err => {
-        if (err.response?.status === 404) setNotFound(true);
-        else toast.error('Error al cargar la propiedad');
+        // 404 (19/08/2026): ahora manda al catálogo en vez de mostrar la pantalla de
+        // "propiedad no encontrada". El backend devuelve 404 tanto si el id no existe
+        // como si la publicación está PAUSADA, así que un link viejo (o alguien
+        // probando ids a mano) termina siempre en el listado de propiedades.
+        // replace: true para que el botón "atrás" no lo devuelva a la ficha muerta.
+        if (err.response?.status === 404) {
+          setNotFound(true);
+          toast('Esa propiedad ya no está disponible');
+          navigate('/propiedades', { replace: true });
+        } else toast.error('Error al cargar la propiedad');
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, navigate]);
 
   // Heartbeat de presencia (28/07/2026): mientras la ficha está abierta, avisa cada
   // ~20s al backend para que el dashboard admin pueda mostrar "quién está viendo qué
@@ -331,6 +340,8 @@ export default function PropertyDetail() {
 
   // Render ----------------------------------------------------------------
 
+  // Pantalla de "no encontrada": desde el 19/08/2026 el 404 redirige al catálogo, así
+  // que esto queda como red de seguridad por si la navegación no llega a ejecutarse.
   if (!loading && notFound) {
     return (
       <div className="bg-background min-h-screen flex flex-col">
@@ -370,7 +381,11 @@ export default function PropertyDetail() {
     // Expensas: solo se muestra si tiene un monto cargado (opcional).
     property.expenses != null && ['Expensas', `${property.expensesCurrency || 'ARS'} $${Number(property.expenses).toLocaleString('es-AR')}`],
     ['Cochera', property.garage ? 'Sí' : 'No'],
-    ['Con llave', property.hasKey ? 'Sí' : 'No'],
+    // Llave (19/08/2026): con keyStatus "HIDDEN" la fila directamente no se muestra,
+    // porque en muchas propiedades el dato no le dice nada al visitante. El fallback
+    // al booleano viejo (hasKey) cubre respuestas anteriores a la migración.
+    (property.keyStatus ?? (property.hasKey ? 'WITH' : 'WITHOUT')) !== 'HIDDEN' &&
+      ['Con llave', (property.keyStatus ?? (property.hasKey ? 'WITH' : 'WITHOUT')) === 'WITH' ? 'Sí' : 'No'],
     property.neighborhood && ['Barrio', property.neighborhood],
     ['Ciudad', property.city],
   ].filter(Boolean) : [];

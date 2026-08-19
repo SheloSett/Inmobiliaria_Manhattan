@@ -304,8 +304,10 @@ export default function SearchResults() {
                         {p.garage && (
                           <span className="flex items-center gap-1 text-xs" title="Cochera"><span className="material-symbols-outlined text-[16px]">directions_car</span></span>
                         )}
-                        {/* "Con llave": ícono, solo si la propiedad la tiene (consistencia con las cards) */}
-                        {p.hasKey && (
+                        {/* "Con llave": ícono, solo si la propiedad la tiene (consistencia con las cards).
+                            Desde el 19/08/2026 el dato es keyStatus (WITH/WITHOUT/HIDDEN); se cae al
+                            booleano viejo hasKey por compatibilidad. */}
+                        {(p.keyStatus ?? (p.hasKey ? 'WITH' : 'WITHOUT')) === 'WITH' && (
                           <span className="flex items-center gap-1 text-secondary text-xs" title="Con llave"><span className="material-symbols-outlined text-[16px]">key</span></span>
                         )}
                         {/* Botón destacado (antes era un link de texto chico poco visible) */}

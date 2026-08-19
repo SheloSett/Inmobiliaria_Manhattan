@@ -46,12 +46,25 @@ const STATUS_OPTIONS = [
   { value: 'RENTED', label: 'Alquilada' },
 ];
 
+// Llave (19/08/2026): reemplaza al checkbox "Con llave" (booleano hasKey). Con el check,
+// no tildarlo estampaba "SIN LLAVE" en la card, y en muchas propiedades el dato no
+// importa: por eso ahora hay una tercera opción para no mostrarlo. Es obligatorio elegir.
+const KEY_OPTIONS = [
+  { value: 'WITH', label: 'Con llave' },
+  { value: 'WITHOUT', label: 'Sin llave' },
+  { value: 'HIDDEN', label: 'No mostrar' },
+];
+
 const EMPTY_FORM = {
   title: '', description: '', price: '', currency: 'USD',
   expenses: '', expensesCurrency: 'ARS',
   operation: 'SALE', type: 'APARTMENT', status: 'AVAILABLE',
-  bedrooms: '', bathrooms: '', area: '', garage: false, hasKey: false,
+  // keyStatus arranca vacío a propósito: el select es obligatorio, así que hay que
+  // elegir una opción y "No mostrar" es una decisión, no un olvido.
+  bedrooms: '', bathrooms: '', area: '', garage: false, keyStatus: '',
   address: '', city: '', neighborhood: '', featured: false,
+  // published: una propiedad nueva nace publicada; se puede pausar sin borrarla.
+  published: true,
   // lat/lng se marcan en el mapa (LocationPicker); vacíos = sin ubicación exacta.
   lat: '', lng: '',
 };
@@ -120,11 +133,13 @@ export default function AdminPropertyForm() {
           bathrooms: p.bathrooms ?? '',
           area: p.area ?? '',
           garage: p.garage || false,
-          hasKey: p.hasKey || false,
+          // Fallback al booleano viejo por si la propiedad es anterior a la migración.
+          keyStatus: p.keyStatus ?? (p.hasKey ? 'WITH' : 'WITHOUT'),
           address: p.address,
           city: p.city,
           neighborhood: p.neighborhood || '',
           featured: p.featured || false,
+          published: p.published !== false,
           lat: p.lat ?? '',
           lng: p.lng ?? '',
         });
@@ -194,6 +209,21 @@ export default function AdminPropertyForm() {
     dragOverItem.current = null;
     if (from === null || to === null || from === to) return;
     setExistingMedia(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  // Mueve una foto/video una posición (botones ‹ ›). Existe porque el drag & drop de
+  // arriba usa la API HTML5 de arrastre, que en CELULARES no funciona: los eventos
+  // táctiles nunca disparan dragstart, así que desde el teléfono no había forma de
+  // reordenar la media (19/08/2026). Con los botones se reordena igual en ambos.
+  const moveMedia = (from, delta) => {
+    setExistingMedia(prev => {
+      const to = from + delta;
+      if (to < 0 || to >= prev.length) return prev;
       const next = [...prev];
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
@@ -352,16 +382,31 @@ export default function AdminPropertyForm() {
                 <input id="neighborhood" name="neighborhood" type="text" value={form.neighborhood} onChange={handleChange}
                   className={INPUT_CLASS} placeholder="Palermo" />
               </div>
-              {/* "Con llave": campo propio de la propiedad (hasKey). Indica que la
+              {/* "Llave": campo propio de la propiedad (keyStatus). Indica si la
                   inmobiliaria tiene la llave para mostrarla. Movido acá desde Amenities
                   a pedido del cliente (28/07/2026): es un dato operativo de la propiedad,
-                  no una característica/amenity. */}
+                  no una característica/amenity.
+                  CHECKBOX ORIGINAL COMENTADO (19/08/2026, regla del proyecto de no
+                  borrar): pasó a ser un select de tres opciones porque el booleano
+                  obligaba a mostrar "SIN LLAVE" en toda propiedad no tildada.
               <label className="flex items-center gap-2 cursor-pointer md:col-span-2">
                 <input type="checkbox" name="hasKey" checked={form.hasKey} onChange={handleChange}
                   className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" />
                 <span aria-hidden="true" className="material-symbols-outlined text-[18px] text-on-surface-variant">key</span>
                 <span className="font-body-md text-body-md text-on-surface">Con llave</span>
               </label>
+              */}
+              <div className="flex flex-col gap-1">
+                <label className={LABEL_CLASS} htmlFor="keyStatus">Llave *</label>
+                <select id="keyStatus" name="keyStatus" required value={form.keyStatus}
+                  onChange={handleChange} className={INPUT_CLASS}>
+                  <option value="" disabled>Elegí una opción…</option>
+                  {KEY_OPTIONS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+                </select>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  "No mostrar" oculta el dato en la web (ni ícono de llave ni sello "Sin llave").
+                </span>
+              </div>
             </div>
           </FormSection>
 
@@ -484,7 +529,7 @@ export default function AdminPropertyForm() {
                 <div className="mt-4">
                   <p className="font-label-sm text-label-sm text-on-surface-variant mb-2 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[16px]">drag_indicator</span>
-                    Fotos y videos actuales — arrastrá para reordenar (la primera foto es la portada)
+                    Fotos y videos actuales — usá las flechas ‹ › (o arrastrá) para reordenar; la primera foto es la portada
                     {deletedIds.length > 0 && (
                       <span className="ml-1 text-secondary">· {deletedIds.length} marcada{deletedIds.length !== 1 ? 's' : ''} para eliminar</span>
                     )}
@@ -514,11 +559,39 @@ export default function AdminPropertyForm() {
                           ) : (
                             <img src={img.url} alt="Media actual" className="w-full h-full object-cover pointer-events-none" />
                           )}
-                          {/* Badge de portada en la primera foto */}
+                          {/* Badge de portada en la primera foto (movido de abajo a arriba
+                              para dejarle el borde inferior a las flechas de reordenar) */}
                           {isCover && !markedForDelete && (
-                            <span className="absolute bottom-1 left-1 bg-primary text-on-primary text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide pointer-events-none">
+                            <span className="absolute top-1 left-1 bg-primary text-on-primary text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide pointer-events-none">
                               Portada
                             </span>
+                          )}
+                          {/* Flechas de reordenar: la alternativa táctil al drag & drop
+                              (que en el celular no funciona). Siempre visibles, no solo
+                              en hover, porque en el teléfono no hay hover. */}
+                          {!markedForDelete && existingMedia.length > 1 && (
+                            <div className="absolute bottom-1 left-1 right-1 flex justify-between pointer-events-none">
+                              <button
+                                type="button"
+                                onClick={() => moveMedia(i, -1)}
+                                disabled={i === 0}
+                                title="Mover antes"
+                                aria-label="Mover antes"
+                                className="pointer-events-auto w-7 h-7 rounded-full bg-surface/90 text-primary shadow flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveMedia(i, 1)}
+                                disabled={i === existingMedia.length - 1}
+                                title="Mover después"
+                                aria-label="Mover después"
+                                className="pointer-events-auto w-7 h-7 rounded-full bg-surface/90 text-primary shadow flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                              </button>
+                            </div>
                           )}
                           <button
                             type="button"
@@ -577,6 +650,34 @@ export default function AdminPropertyForm() {
                 No hay amenities cargados. Podés agregarlos en Ajustes → Catálogos.
               </p>
             )}
+          </FormSection>
+
+          {/* ── Estado de la publicación ── (19/08/2026)
+              Permite PAUSAR la propiedad sin borrarla: deja de aparecer en la web
+              (home, catálogo, búsqueda y buscadores) pero sigue en el panel con sus
+              fotos y sus métricas, lista para republicar. El mismo selector está en la
+              lista de propiedades como acción rápida. */}
+          <FormSection title="Estado de la publicación">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-1">
+                <label className={LABEL_CLASS} htmlFor="published">Visibilidad en la web</label>
+                <select
+                  id="published"
+                  name="published"
+                  value={form.published ? 'true' : 'false'}
+                  onChange={(e) => setForm(prev => ({ ...prev, published: e.target.value === 'true' }))}
+                  className={INPUT_CLASS}
+                >
+                  <option value="true">Publicada (visible en la web)</option>
+                  <option value="false">Pausada (oculta, no se borra)</option>
+                </select>
+              </div>
+              <p className="font-body-md text-sm text-on-surface-variant md:self-end md:pb-3">
+                {form.published
+                  ? 'La propiedad se muestra en la web y se puede compartir su link.'
+                  : 'Pausada: no aparece en la web y quien abra su link va al listado de propiedades.'}
+              </p>
+            </div>
           </FormSection>
 
           {/* ── Destacar ── (separada de amenities a pedido: es una decisión de
