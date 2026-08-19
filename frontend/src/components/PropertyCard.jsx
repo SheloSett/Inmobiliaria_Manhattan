@@ -38,12 +38,25 @@ export default function PropertyCard({ property }) {
   const slides = photos.length ? photos : (fallback ? [fallback] : []);
   const [index, setIndex] = useState(0);
 
+  // Posición REAL que se dibuja. Es `index` acotado al rango válido: si el array de
+  // fotos se achica sin que el componente se vuelva a montar (mismo `key`), un `index`
+  // viejo apuntaría a una foto que ya no existe y la card quedaría EN BLANCO, porque
+  // todas las imágenes se renderizan con opacity-0 salvo la activa. Se lee siempre este
+  // valor derivado en vez del estado crudo (19/08/2026).
+  const current = slides.length ? Math.min(index, slides.length - 1) : 0;
+
   // Las flechas van ENCIMA del link que cubre la foto, así que frenar la propagación
   // alcanza para que pasar de foto no navegue a la ficha.
   const go = (e, delta) => {
     e.preventDefault();
     e.stopPropagation();
-    setIndex((i) => (i + delta + slides.length) % slides.length);
+    // Se acota el valor previo antes de sumar, para que la primera flecha después de un
+    // cambio de fotos no salte a una posición inexistente. Se mantiene la forma
+    // funcional (i => …) para no perder clics seguidos si React agrupa dos eventos.
+    setIndex((i) => {
+      const safe = Math.min(i, slides.length - 1);
+      return (safe + delta + slides.length) % slides.length;
+    });
   };
 
   // Prefiere el label enriquecido del backend (catálogo gestionable); fallback al mapa.
@@ -58,19 +71,34 @@ export default function PropertyCard({ property }) {
       {/* Imagen */}
       <div className="relative h-56 overflow-hidden flex-shrink-0">
         {slides.length > 0 ? (
-          slides.map((src, i) => (
-            <img
-              key={`${i}-${src}`}
-              alt={property.title}
-              // Todas las fotos se apilan y se cruzan por opacidad. La activa queda
-              // visible; el resto no recibe clics.
-              className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-                i === index ? 'opacity-100' : 'opacity-0'
-              }`}
-              src={src}
-              loading={i === 0 ? undefined : 'lazy'}
-            />
-          ))
+          slides.map((src, i) => {
+            // VENTANA DE MONTAJE (19/08/2026): solo se montan la foto actual y sus dos
+            // vecinas (la anterior y la siguiente, dando la vuelta porque el carrusel es
+            // circular). Antes se renderizaban TODAS apiladas y `loading="lazy"` no
+            // servía de nada: las fotos ocultas ocupan igual el alto completo de la card,
+            // así que apenas la card entraba en pantalla el navegador se bajaba las 10 o
+            // 20 fotos de CADA propiedad de la grilla. Con la ventana, pasar de foto
+            // sigue siendo instantáneo (la vecina ya está cargada en opacity-0) pero el
+            // catálogo descarga solo lo que se usa.
+            const near =
+              Math.abs(i - current) <= 1 ||
+              (current === 0 && i === slides.length - 1) ||
+              (current === slides.length - 1 && i === 0);
+            if (!near) return null;
+            return (
+              <img
+                key={`${i}-${src}`}
+                alt={property.title}
+                // Las fotos montadas se apilan y se cruzan por opacidad. La activa queda
+                // visible; el resto no recibe clics.
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                  i === current ? 'opacity-100' : 'opacity-0'
+                }`}
+                src={src}
+                loading={i === 0 ? undefined : 'lazy'}
+              />
+            );
+          })
         ) : (
           <div className="w-full h-full bg-surface-container flex items-center justify-center">
             <span className="material-symbols-outlined text-[48px] text-outline">image_not_supported</span>
@@ -137,7 +165,7 @@ export default function PropertyCard({ property }) {
                 <span
                   key={`${i}-${src}`}
                   className={`h-1.5 rounded-full transition-all ${
-                    i === index ? 'w-4 bg-surface' : 'w-1.5 bg-surface/60'
+                    i === current ? 'w-4 bg-surface' : 'w-1.5 bg-surface/60'
                   }`}
                 />
               ))}

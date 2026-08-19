@@ -43,6 +43,13 @@ const EMPTY_FORM = {
 
 const PAGE_SIZE = 8;
 
+// Cuántas propiedades se le piden al backend para la tabla del panel (19/08/2026).
+// Esta pantalla filtra y pagina del lado del CLIENTE (ver `filtered`/`paginated` más
+// abajo), así que necesita el listado completo, no una página. Sin este parámetro el
+// backend aplicaba su default de 12 (ver getAll en property.controller.js) y el panel
+// nunca mostraba más de 12 propiedades, por más que su paginación local dijera otra cosa.
+const ADMIN_FETCH_LIMIT = 500;
+
 // --- StatusBadge ---
 // Muestra el estado comercial (Publicada/Reservada/…) y, si la publicación está
 // PAUSADA (published = false, 19/08/2026), lo tapa con ese aviso: es lo primero que
@@ -426,7 +433,15 @@ export default function AdminProperties() {
       // includeUnpublished (19/08/2026): el panel también tiene que ver las PAUSADAS,
       // que el endpoint oculta por defecto. El backend igual exige token válido para
       // devolverlas, así que el parámetro solo no sirve desde afuera.
-      const res = await api.get('/properties', { params: { includeUnpublished: true } });
+      // const res = await api.get('/properties', { params: { includeUnpublished: true } });
+      // ↑ Comentada (19/08/2026, regla del proyecto de no borrar): faltaba `limit`, así
+      //   que el backend caía en su default de 12 y la tabla del panel jamás mostraba
+      //   más de 12 propiedades. Con "pausar" eso pasó de molesto a BLOQUEANTE: una
+      //   propiedad pausada que no estuviera entre las 12 más recientes desaparecía de
+      //   la web Y del panel, y no quedaba forma de volver a publicarla desde la UI.
+      const res = await api.get('/properties', {
+        params: { includeUnpublished: true, limit: ADMIN_FETCH_LIMIT },
+      });
       setProperties(res.data.properties ?? []);
     } catch {
       // el interceptor de api.js maneja el 401; otros errores dejan la lista vacía

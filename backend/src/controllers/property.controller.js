@@ -1,11 +1,34 @@
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
+const cloudinary = require('../config/cloudinary');
 const presence = require('../services/presence.service');
 
 const prisma = new PrismaClient();
 
 // Valores válidos del campo "llave" (ver keyStatus en schema.prisma).
 const KEY_STATUS_VALUES = ['WITH', 'WITHOUT', 'HIDDEN'];
+
+// Borra de Cloudinary los archivos que multer YA subió, cuando la request termina
+// rechazada antes de guardarlos en la base (19/08/2026). Hace falta porque multer corre
+// ANTES del controller: para cuando se valida el body, las fotos y videos ya están en la
+// cuenta de Cloudinary, y un 400 los dejaba ahí para siempre sin ninguna propiedad que
+// los referencie —el mismo tipo de huérfanos que se limpió para los CV—.
+// `f.filename` es el public_id que devuelve CloudinaryStorage, y el resource_type tiene
+// que coincidir con el usado al subir (ver upload.middleware.js) o el destroy no
+// encuentra el archivo. Los errores se ignoran a propósito: si la limpieza falla, la
+// respuesta que le importa al admin sigue siendo el 400 de validación.
+async function discardUploads(files) {
+  if (!files?.length) return;
+  await Promise.all(
+    files.map((f) =>
+      cloudinary.uploader
+        .destroy(f.filename, {
+          resource_type: f.mimetype?.startsWith('video/') ? 'video' : 'image',
+        })
+        .catch(() => {})
+    )
+  );
+}
 
 // ¿La request viene del panel admin (token JWT válido)? Se usa para decidir si se
 // pueden ver las propiedades PAUSADAS (published = false). No es un middleware
@@ -219,6 +242,9 @@ exports.create = async (req, res) => {
     // el resultado de olvidarse de tildar un check.
     const key = parseKeyStatus(keyStatus, hasKey);
     if (!key) {
+      // Se descartan las fotos/videos que multer ya subió: no va a existir ninguna
+      // propiedad que las referencie (ver discardUploads arriba).
+      await discardUploads(req.files);
       return res.status(400).json({ error: 'Elegí una opción en "Llave"', message: 'Elegí una opción en "Llave"' });
     }
 
@@ -316,6 +342,11 @@ exports.update = async (req, res) => {
     if (keyStatus !== undefined || hasKey !== undefined) {
       const key = parseKeyStatus(keyStatus, hasKey);
       if (!key) {
+        // Igual que en create: este 400 sale ANTES de tocar la base, así que los
+        // archivos recién subidos no quedan referenciados por ninguna fila y hay que
+        // borrarlos de Cloudinary. Es seguro hacerlo acá porque el createMany de la
+        // media nueva ocurre más abajo, después de esta validación.
+        await discardUploads(req.files);
         return res.status(400).json({ error: 'Elegí una opción en "Llave"', message: 'Elegí una opción en "Llave"' });
       }
       data.keyStatus = key;
