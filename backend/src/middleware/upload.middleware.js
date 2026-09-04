@@ -33,6 +33,22 @@ const storage = new CloudinaryStorage({
       resource_type: isVideo ? 'video' : 'image',
       // Sin allowed_formats fijo: se deja que Cloudinary acepte los formatos que
       // pasen el fileFilter de abajo (jpg/png/webp y mp4/mov/webm).
+
+      // timeout (03/09/2026): CAUSA RAIZ del "no se pudo guardar" intermitente al subir
+      // videos. El SDK de Cloudinary aplica 60000 ms por defecto (ver
+      // node_modules/cloudinary/lib/uploader.js, `post_request.setTimeout(...)`) y es un
+      // timeout POR INACTIVIDAD del socket, no por duracion total. Mientras el archivo
+      // viaja hay trafico y no salta; el problema aparece DESPUES de mandar el ultimo
+      // byte: Cloudinary transcodifica el video de forma SINCRONICA antes de responder y,
+      // durante ese procesado, el socket queda mudo. Si transcodificar tarda mas de 60 s
+      // el SDK aborta con "Request Timeout" (http_code 499) y multer propaga el error.
+      // Por eso fallaba solo con mp4 y no con fotos (una foto se procesa en ~1 s) y por
+      // eso era intermitente: el tiempo de transcodificacion depende de la duracion,
+      // resolucion y codec de cada video.
+      // Se sube a 300000 ms (5 min) para videos, alineado con los proxy_read_timeout de
+      // nginx. Para imagenes se deja el default: no tiene sentido esperar 5 min por una
+      // foto, y un timeout corto ahi ayuda a detectar problemas de red rapido.
+      ...(isVideo ? { timeout: 300000 } : {}),
     };
   },
 });

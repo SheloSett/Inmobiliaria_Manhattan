@@ -71,6 +71,22 @@ const EMPTY_FORM = {
 
 const MAX_IMAGES = 20;
 
+// Limites de peso (03/09/2026). Antes NO se validaba el tamano en el cliente: se
+// aceptaba cualquier archivo, se subia entero y recien al final llegaba un error
+// generico. Un video de 200 MB significaba esperar varios minutos para que despues
+// fallara sin explicacion. Ahora se avisa en el momento de arrastrarlo.
+// Los numeros estan atados a los limites reales del camino de subida:
+//   - 100 MB por archivo  -> limits.fileSize de multer (backend/src/middleware/upload.middleware.js)
+//                            y tope de video del plan gratuito de Cloudinary.
+//   - 100 MB en total     -> client_max_body_size de nginx (110M) aplica al body COMPLETO,
+//                            no por archivo: 8 fotos + 1 video "chicos" pueden pasarse
+//                            igual aunque ninguno supere el limite individual. Se dejan
+//                            10 MB de aire para el resto de los campos del formulario.
+const MAX_FILE_MB = 100;
+const MAX_TOTAL_MB = 100;
+const MB = 1024 * 1024;
+const fmtMB = (bytes) => `${(bytes / MB).toFixed(1)} MB`;
+
 // h-12 (48px) fija la MISMA altura para inputs y selects: los <select> nativos
 // renderizaban 2px más bajos que los <input>, y eso desalineaba las filas del form.
 // El textarea usa esta clase + min-h-[150px], que gana sobre h-12, así que no se rompe.
@@ -106,6 +122,10 @@ export default function AdminPropertyForm() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
   const [dragOver, setDragOver] = useState(false);
+  // Progreso de subida 0-100 (03/09/2026). Sin esto, al guardar con un video el boton
+  // quedaba en "Guardando..." varios minutos sin ninguna senal, y el cliente creia que
+  // se habia colgado. null = no hay subida en curso.
+  const [uploadPct, setUploadPct] = useState(null);
   const [error, setError] = useState('');
   const fileRef = useRef();
   // Índices para el drag & drop de reordenamiento de la media existente.
@@ -182,8 +202,28 @@ export default function AdminPropertyForm() {
   const addFiles = (files) => {
     const media = Array.from(files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
     if (!media.length) return;
+
+    // Validacion de peso POR ARCHIVO antes de subir nada (03/09/2026). Los que se pasan
+    // se descartan con un aviso que dice el nombre y cuanto pesa, en vez de dejar que la
+    // subida falle despues de varios minutos con un error generico.
+    const tooBig = media.filter(f => f.size > MAX_FILE_MB * MB);
+    const ok = media.filter(f => f.size <= MAX_FILE_MB * MB);
+    tooBig.forEach(f =>
+      toast.error(`"${f.name}" pesa ${fmtMB(f.size)} y el maximo es ${MAX_FILE_MB} MB. Comprimilo o subi un video mas corto.`, { duration: 6000 })
+    );
+    if (!ok.length) return;
+
     setNewImages(prev => {
-      const merged = [...prev, ...media].slice(0, MAX_IMAGES);
+      const merged = [...prev, ...ok].slice(0, MAX_IMAGES);
+      if (prev.length + ok.length > MAX_IMAGES) {
+        toast.error(`Solo se pueden subir ${MAX_IMAGES} archivos por propiedad.`);
+      }
+      // Aviso de peso TOTAL: el limite de nginx aplica al body entero, asi que varios
+      // archivos validos por separado pueden fallar juntos.
+      const total = merged.reduce((acc, f) => acc + f.size, 0);
+      if (total > MAX_TOTAL_MB * MB) {
+        toast.error(`En total son ${fmtMB(total)} y el maximo por guardado es ${MAX_TOTAL_MB} MB. Subi los videos de a uno, guardando entre medio.`, { duration: 7000 });
+      }
       setPreviews(merged.map(f => URL.createObjectURL(f)));
       return merged;
     });
@@ -239,6 +279,16 @@ export default function AdminPropertyForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Corte por peso total antes de mandar (03/09/2026): si se pasa, nginx responderia
+    // 413 despues de que el navegador subio todo, asi que conviene frenarlo aca.
+    const totalBytes = newImages.reduce((acc, f) => acc + f.size, 0);
+    if (totalBytes > MAX_TOTAL_MB * MB) {
+      setError(`Los archivos suman ${fmtMB(totalBytes)} y el maximo por guardado es ${MAX_TOTAL_MB} MB. Quita algunos y volve a guardar (podes agregar el resto editando la propiedad despues).`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -264,7 +314,17 @@ export default function AdminPropertyForm() {
         fd.append('imageOrder', JSON.stringify(orderIds));
       }
 
-      const cfg = { headers: { 'Content-Type': 'multipart/form-data' } };
+      // onUploadProgress: alimenta la barra de progreso. Al llegar a 100% el archivo
+      // termino de viajar pero el backend todavia lo esta mandando a Cloudinary (y, si es
+      // video, esperando la transcodificacion), por eso el 100% pasa a "Procesando...".
+      const cfg = {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (!evt.total) return;
+          setUploadPct(Math.round((evt.loaded * 100) / evt.total));
+        },
+      };
+      if (newImages.length) setUploadPct(0);
       if (isEdit) {
         await api.put(`/properties/${id}`, fd, cfg);
         toast.success('Propiedad actualizada');
@@ -274,10 +334,22 @@ export default function AdminPropertyForm() {
       }
       navigate('/admin/properties');
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al guardar. Intente nuevamente.');
+      // El backend ahora manda un `message` en castellano para cada causa (ver el
+      // middleware de errores en backend/src/index.js). Los dos casos que NO llegan a
+      // Node se traducen aca: el 413 lo corta nginx antes, y un error sin `response` es
+      // la conexion cortada a mitad de la subida.
+      const status = err.response?.status;
+      let msg = err.response?.data?.message;
+      if (!msg && status === 413) {
+        msg = `El servidor rechazo la subida por tamano. Los archivos suman ${fmtMB(totalBytes)}; proba subiendo menos archivos a la vez.`;
+      } else if (!msg && !err.response) {
+        msg = 'Se corto la conexion durante la subida. Revisa tu internet y proba de nuevo.';
+      }
+      setError(msg || 'Error al guardar. Intente nuevamente.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
+      setUploadPct(null);
     }
   };
 
@@ -479,7 +551,10 @@ export default function AdminPropertyForm() {
               <CloudUpload size={40} className="text-outline mb-4 group-hover:text-primary transition-colors" />
               <p className="font-label-md text-label-md text-primary text-center">Arrastra y suelta tus fotos o videos aquí</p>
               <p className="font-label-sm text-label-sm text-on-surface-variant text-center mt-2">
-                o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · fotos JPG/PNG/WebP · videos MP4/MOV/WebM hasta 100 MB)
+                {/* o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · fotos JPG/PNG/WebP · videos MP4/MOV/WebM hasta 100 MB) */}
+                {/* ↑ Comentado (03/09/2026): no mencionaba el limite de peso TOTAL por
+                    guardado, que es el que en la practica hacia fallar la subida. */}
+                o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · {MAX_FILE_MB} MB por archivo · {MAX_TOTAL_MB} MB en total por guardado)
               </p>
               {newImages.length > 0 && (
                 <p className="font-label-md text-label-md text-secondary mt-3">
@@ -693,6 +768,33 @@ export default function AdminPropertyForm() {
             </label>
           </FormSection>
 
+          {/* Barra de progreso de subida (03/09/2026). Solo aparece mientras se estan
+              mandando archivos. Al llegar a 100% el navegador ya termino de subir, pero
+              el backend sigue trabajando (mandando a Cloudinary y, si hay video,
+              esperando la transcodificacion, que es sincronica y puede tardar): se
+              cambia el texto a "Procesando video..." para que no parezca colgado. */}
+          {uploadPct !== null && (
+            <div className="pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-label-sm text-label-sm text-on-surface-variant">
+                  {uploadPct < 100 ? `Subiendo archivos... ${uploadPct}%` : 'Procesando en el servidor... esto puede tardar un rato si hay videos.'}
+                </p>
+                {uploadPct < 100 && (
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">{uploadPct}%</span>
+                )}
+              </div>
+              <div className="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+                <div
+                  className={`h-full bg-secondary transition-all duration-200 ${uploadPct >= 100 ? 'animate-pulse' : ''}`}
+                  style={{ width: `${uploadPct}%` }}
+                />
+              </div>
+              <p className="font-label-sm text-label-sm text-on-surface-variant mt-2">
+                No cierres ni recargues esta pagina hasta que termine.
+              </p>
+            </div>
+          )}
+
           {/* ── Acciones ── */}
           <div className="flex items-center justify-end gap-4 pt-4 border-t border-surface-variant pb-stack-lg">
             <button
@@ -707,7 +809,14 @@ export default function AdminPropertyForm() {
               disabled={loading}
               className="px-6 py-3 rounded-lg bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary-container transition-colors shadow-sm disabled:opacity-50"
             >
-              {loading ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Publicar'}
+              {/* {loading ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Publicar'} */}
+              {/* ↑ Comentado (03/09/2026): "Guardando..." solo, sin porcentaje, no
+                  distinguia entre estar subiendo y estar esperando al servidor. */}
+              {!loading
+                ? (isEdit ? 'Guardar cambios' : 'Publicar')
+                : uploadPct !== null && uploadPct < 100
+                  ? `Subiendo... ${uploadPct}%`
+                  : 'Guardando...'}
             </button>
           </div>
         </form>

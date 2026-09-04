@@ -86,4 +86,78 @@ app.use('/seo', seoRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// --- Manejo de errores (03/09/2026) ---
+// FALTABA por completo. Sin este middleware, cualquier error de multer o de Cloudinary
+// caia en el handler por defecto de Express, que responde un 500 con cuerpo HTML y sin
+// campo `message`. El panel admin lee `err.response.data.message` (ver
+// AdminPropertyForm.jsx) y, al no encontrarlo, mostraba SIEMPRE el mismo texto generico
+// "Error al guardar. Intente nuevamente." — daba igual si el video pesaba de mas, si
+// Cloudinary habia tardado mucho o si se habia cortado la conexion. Por eso el cliente
+// no podia decir que le estaba pasando: el sistema no se lo decia.
+// Ahora cada causa devuelve un JSON con un `message` en castellano que el admin entiende.
+// Va DESPUES de todas las rutas y con los 4 argumentos (err, req, res, next): Express
+// identifica un error handler por la aridad, con 3 lo trataria como middleware comun.
+app.use((err, req, res, next) => {
+  // Si ya se empezo a escribir la respuesta no se puede cambiar el status: se delega
+  // en el handler por defecto, que cierra la conexion.
+  if (res.headersSent) return next(err);
+
+  console.error('[error]', req.method, req.originalUrl, err?.code || err?.name || '', err?.message || err);
+
+  // 1) Errores de multer (limites de subida). Se reconocen por `err.code`, no por
+  //    instanceof, para no tener que importar multer aca.
+  if (err?.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      error: 'Archivo demasiado grande',
+      message: 'Uno de los archivos supera los 100 MB. Comprimi el video o subi uno mas corto.',
+    });
+  }
+  if (err?.code === 'LIMIT_FILE_COUNT' || err?.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      error: 'Demasiados archivos',
+      message: 'Se pueden subir hasta 20 archivos por propiedad.',
+    });
+  }
+  if (err?.code?.startsWith?.('LIMIT_')) {
+    return res.status(400).json({
+      error: 'Subida rechazada',
+      message: 'La subida fue rechazada por superar un limite. Proba con menos archivos o mas livianos.',
+    });
+  }
+
+  // 2) Timeout de Cloudinary. El SDK aborta con { http_code: 499, name: 'TimeoutError' }
+  //    y multer-storage-cloudinary lo propaga; segun el camino puede venir anidado en
+  //    `err.error`, asi que se miran las dos formas.
+  const cloudErr = err?.error || err;
+  if (cloudErr?.http_code === 499 || cloudErr?.name === 'TimeoutError' || err?.code === 'ETIMEDOUT') {
+    return res.status(504).json({
+      error: 'Tiempo de espera agotado',
+      message: 'El video tardo demasiado en procesarse y se corto la subida. Proba de nuevo con un video mas corto o de menor resolucion.',
+    });
+  }
+
+  // 3) Conexion cortada a mitad de la subida (el navegador cancelo, se cayo la red).
+  if (err?.code === 'ECONNRESET' || err?.code === 'EPIPE' || err?.type === 'request.aborted') {
+    return res.status(400).json({
+      error: 'Subida interrumpida',
+      message: 'Se corto la conexion durante la subida. Revisa tu internet y proba de nuevo.',
+    });
+  }
+
+  // 4) Cualquier otro error de Cloudinary trae su propio mensaje, que es mas util que
+  //    un generico (ej. cuota de la cuenta agotada, formato no soportado).
+  if (cloudErr?.http_code) {
+    return res.status(cloudErr.http_code >= 400 && cloudErr.http_code < 600 ? cloudErr.http_code : 502).json({
+      error: 'Error al subir el archivo',
+      message: `Cloudinary rechazo el archivo: ${cloudErr.message || 'motivo desconocido'}`,
+    });
+  }
+
+  // 5) Fallback: al menos ahora viaja un `message` en JSON y no un HTML mudo.
+  res.status(500).json({
+    error: 'Error del servidor',
+    message: 'No se pudo completar la operacion. Si se repite, avisale al desarrollador.',
+  });
+});
+
 app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));

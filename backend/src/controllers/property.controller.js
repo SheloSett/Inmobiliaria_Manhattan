@@ -30,6 +30,51 @@ async function discardUploads(files) {
   );
 }
 
+// Deriva el `public_id` de Cloudinary a partir de la URL guardada en PropertyImage.url
+// (03/09/2026). Hace falta porque la tabla guarda solo la URL: cuando se subio el archivo
+// teniamos `f.filename` (el public_id), pero eso no se persistio nunca. La URL tiene la
+// forma:
+//   https://res.cloudinary.com/<cloud>/<image|video>/upload/v<version>/<public_id>.<ext>
+// asi que el public_id es todo lo que va despues de "/upload/", sin el segmento de
+// version y sin la extension. Devuelve null si la URL no es de Cloudinary (por ejemplo
+// las viejas /uploads/properties/... de cuando se guardaba en disco local), y en ese caso
+// el borrado remoto se saltea sin romper nada.
+function publicIdFromUrl(url) {
+  if (typeof url !== 'string' || !url.includes('res.cloudinary.com')) return null;
+  const afterUpload = url.split('/upload/')[1];
+  if (!afterUpload) return null;
+  // Se quita el prefijo de version (v1723456789/) si esta presente.
+  const withoutVersion = afterUpload.replace(/^v\d+\//, '');
+  // Se quita la extension del ultimo segmento (el public_id puede tener barras: incluye
+  // la carpeta, ej "manhattan/properties/videos/abc123").
+  const withoutExt = withoutVersion.replace(/\.[a-zA-Z0-9]+$/, '');
+  return withoutExt || null;
+}
+
+// Borra de Cloudinary los archivos de una lista de filas de PropertyImage (03/09/2026).
+// ANTES: al eliminar una foto o un video del panel solo se borraba la FILA de la base y
+// el archivo quedaba en la cuenta de Cloudinary para siempre. Cada media borrada seguia
+// consumiendo cuota del plan gratuito (25 GB), y cuando la cuota se agota Cloudinary
+// empieza a rechazar TODAS las subidas nuevas — el mismo tipo de huerfano que ya se habia
+// tapado para los CV y para las subidas descartadas por validacion (ver discardUploads).
+// El resource_type tiene que coincidir con el usado al subir o el destroy no encuentra el
+// archivo: se toma de la columna `type` y, si no esta, se deduce de la propia URL.
+// Los errores se ignoran a proposito: si la limpieza remota falla, la fila ya se borro y
+// lo que le importa al admin es que la operacion termine bien.
+async function destroyMedia(images) {
+  if (!images?.length) return;
+  await Promise.all(
+    images.map((img) => {
+      const publicId = publicIdFromUrl(img.url);
+      if (!publicId) return Promise.resolve();
+      const isVideo = img.type === 'video' || img.url.includes('/video/upload/');
+      return cloudinary.uploader
+        .destroy(publicId, { resource_type: isVideo ? 'video' : 'image' })
+        .catch(() => {});
+    })
+  );
+}
+
 // ¿La request viene del panel admin (token JWT válido)? Se usa para decidir si se
 // pueden ver las propiedades PAUSADAS (published = false). No es un middleware
 // porque estas rutas son públicas: acá el token es opcional, solo amplía lo que se
@@ -365,7 +410,20 @@ exports.update = async (req, res) => {
     // 1) Eliminar las marcadas para borrar.
     if (deleteImages) {
       const ids = JSON.parse(deleteImages);
-      await prisma.propertyImage.deleteMany({ where: { id: { in: ids } } });
+      // await prisma.propertyImage.deleteMany({ where: { id: { in: ids } } });
+      // ↑ Comentado (03/09/2026): borraba la fila y dejaba el archivo en Cloudinary para
+      //   siempre (ver destroyMedia arriba). Ahora primero se leen las filas para saber
+      //   que archivos hay que dar de baja, se borran de la base y recien despues se
+      //   eliminan de Cloudinary. Ese orden importa: si el destroy remoto falla, la fila
+      //   ya no esta y la propiedad queda consistente igual; al reves, un fallo de la
+      //   base dejaria archivos borrados que la ficha todavia intenta mostrar.
+      //   Se filtra por propertyId ademas de por id para que un `deleteImages` manipulado
+      //   no pueda borrar media de OTRA propiedad.
+      const toDelete = await prisma.propertyImage.findMany({
+        where: { id: { in: ids }, propertyId: id },
+      });
+      await prisma.propertyImage.deleteMany({ where: { id: { in: toDelete.map((m) => m.id) } } });
+      await destroyMedia(toDelete);
     }
 
     // 2) Reordenar la media existente según imageOrder (array de ids en el nuevo orden,
@@ -419,7 +477,16 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    await prisma.property.delete({ where: { id: Number(req.params.id) } });
+    // await prisma.property.delete({ where: { id: Number(req.params.id) } });
+    // ↑ Comentado (03/09/2026): el `onDelete: Cascade` del schema borra las filas de
+    //   PropertyImage junto con la propiedad, pero los archivos seguian en Cloudinary
+    //   ocupando cuota sin que ninguna fila los referenciara — imposibles de rastrear
+    //   despues. Ahora se leen las URLs ANTES del delete (despues ya no existen) y se
+    //   limpian de Cloudinary una vez borrada la propiedad.
+    const propertyId = Number(req.params.id);
+    const media = await prisma.propertyImage.findMany({ where: { propertyId } });
+    await prisma.property.delete({ where: { id: propertyId } });
+    await destroyMedia(media);
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Error al eliminar propiedad' });

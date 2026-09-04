@@ -220,7 +220,16 @@ server {
     server_name manhattannegociosinmobiliarios.com.ar www.manhattannegociosinmobiliarios.com.ar;
 
     # Los CVs y las fotos pueden pesar; el default de nginx (1MB) los rechaza.
-    client_max_body_size 20M;
+    # client_max_body_size 20M;
+    # ↑ Comentado (03/09/2026): este 20M se eligió cuando la web solo subía fotos y CVs,
+    #   ANTES de que existieran los videos de propiedad. Era la causa del error
+    #   intermitente "no se pudo guardar" que reportaba el cliente al subir un mp4:
+    #   este server block es el proxy de AFUERA, así que su límite es el que manda —
+    #   el `client_max_body_size 110M` del nginx del contenedor (frontend/nginx.conf)
+    #   nunca llegaba a aplicarse. Todo video de más de 20 MB moría acá con un 413.
+    #   Se sube a 110M para que coincida con el nginx interno (10 MB de aire sobre el
+    #   límite de 100 MB por archivo que aplica multer).
+    client_max_body_size 110M;
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -228,9 +237,28 @@ server {
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeouts (03/09/2026): la segunda causa del mismo bug. Sin estas líneas nginx
+        # usa su default de 60s, y subir un video a Cloudinary tarda más: el backend
+        # tiene que mandarlo Y esperar a que Cloudinary lo TRANSCODIFIQUE (es sincrónico),
+        # todo dentro de la misma request. A los 60s nginx cortaba con 504.
+        # El nginx del contenedor ya tenía 300s; faltaba replicarlo acá, que es el que
+        # ve la conexión del cliente primero.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+
+        # Sin buffering de request: nginx reenvía el body al contenedor a medida que
+        # llega, en vez de escribir 100 MB a disco primero y recién después mandarlos.
+        # Baja la latencia y evita llenar /var/lib/nginx con archivos temporales.
+        proxy_request_buffering off;
     }
 }
 ```
+
+> **Ojo con certbot:** si ya corriste el paso 6.3, certbot creó un bloque `listen 443`
+> en este mismo archivo. Los cambios de arriba hay que aplicarlos en **el bloque 443**
+> (o en los dos), porque el tráfico real entra por HTTPS. Verificá con:
+> `grep -n "client_max_body_size\|proxy_read_timeout\|listen" /etc/nginx/sites-available/manhattan`
 
 > `X-Forwarded-For` y `X-Forwarded-Proto` no son opcionales: el backend tiene
 > `trust proxy` activado para que el rate limit del login cuente por IP real.
