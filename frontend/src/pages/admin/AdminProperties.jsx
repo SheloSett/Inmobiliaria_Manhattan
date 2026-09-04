@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, Trash2, X, Upload, Pause, Play } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Upload, Pause, Play, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { propertyThumbnail } from '../../utils/media';
@@ -427,6 +427,64 @@ export default function AdminProperties() {
   // id de la propiedad cuyo pausar/republicar está en curso (deshabilita ese botón).
   const [togglingId, setTogglingId] = useState(null);
 
+  // --- Reordenamiento manual (03/09/2026) ---
+  // El orden de las propiedades ya no es fijo (antes: la más nueva primero, sin forma de
+  // cambiarlo). Se arrastra una fila —o se usan las flechas ▲▼— y el orden se guarda solo.
+  // Es un orden GLOBAL: el mismo que ve el visitante en el catálogo y en destacadas.
+  const [savingOrder, setSavingOrder] = useState(false);
+  const dragItem     = useRef(null);
+  const dragOverItem = useRef(null);
+
+  // Con una búsqueda activa NO se puede reordenar. Arrastrar sobre una lista filtrada es
+  // ambiguo: la fila de arriba en pantalla no es la de arriba en la lista real, así que
+  // "moverla una posición" no tiene un significado único. Se desactiva y se avisa.
+  //
+  // Segunda condición: el reordenamiento manda la lista COMPLETA al backend, que asigna
+  // las posiciones 0..N-1 a lo que recibe. Eso solo es correcto si acá están TODAS las
+  // propiedades. El fetch pide hasta ADMIN_FETCH_LIMIT (500), muy por encima del volumen
+  // real, pero si algún día se alcanzara ese tope las que no se cargaron conservarían su
+  // displayOrder viejo y quedarían intercaladas en cualquier lado. Antes que reordenar
+  // mal en silencio, se apaga la función.
+  const listaCompleta = properties.length < ADMIN_FETCH_LIMIT;
+  const canReorder = !search && listaCompleta;
+
+  // Persiste el orden completo. Se manda la lista ENTERA (no solo la fila movida) para que
+  // el backend no tenga que adivinar posiciones; ver ctrl.reorder en el backend.
+  const persistOrder = async (list) => {
+    setSavingOrder(true);
+    try {
+      await api.put('/properties/reorder', { ids: list.map(p => p.id) });
+      toast.success('Orden actualizado');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo guardar el nuevo orden');
+      // Se recarga desde el servidor: si el guardado falló, dejar la lista movida en
+      // pantalla mentiría sobre el orden real que ve el visitante.
+      fetchProperties();
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  // Mueve la propiedad de la posición `from` a `to` (índices sobre la lista COMPLETA, no
+  // sobre la página visible: así las flechas pueden cruzar el corte entre páginas).
+  const moveTo = (from, to) => {
+    if (to < 0 || to >= properties.length || from === to) return;
+    const next = [...properties];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setProperties(next);   // optimista: la tabla se reacomoda al instante
+    persistOrder(next);
+  };
+
+  const handleReorderDrop = () => {
+    const from = dragItem.current;
+    const to   = dragOverItem.current;
+    dragItem.current = null;
+    dragOverItem.current = null;
+    if (from === null || to === null) return;
+    moveTo(from, to);
+  };
+
   const fetchProperties = async () => {
     setLoading(true);
     try {
@@ -561,6 +619,29 @@ export default function AdminProperties() {
         </div>
       </div>
 
+      {/* Aviso del reordenamiento (03/09/2026). Explica cómo se ordena y, sobre todo,
+          por qué los controles se apagan cuando hay una búsqueda activa: sin este cartel
+          parecería que la función se rompió. */}
+      {!loading && filtered.length > 0 && (
+        <div className="max-w-screen-xl mx-auto mb-3 flex items-center gap-2 px-1">
+          <GripVertical size={16} className="text-outline flex-shrink-0" />
+          <p className="font-label-sm text-label-sm text-on-surface-variant">
+            {canReorder ? (
+              <>
+                Arrastrá una fila (o usá <ChevronUp size={12} className="inline" />
+                <ChevronDown size={12} className="inline" />) para cambiar el orden en que
+                se ven las propiedades en la web. Se guarda solo.
+                {savingOrder && <span className="text-primary"> Guardando orden...</span>}
+              </>
+            ) : !listaCompleta ? (
+              <>El reordenamiento está desactivado: hay demasiadas propiedades para ordenarlas desde acá sin riesgo de descolocar las que no se ven. Avisale al desarrollador.</>
+            ) : (
+              <>Para reordenar, borrá la búsqueda: sobre una lista filtrada las posiciones no coinciden con el orden real.</>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* ---- Tabla de propiedades ---- */}
       {/* La tabla se oculta en mobile (hidden md:table): sus 5 columnas no entran y se
           cortaban Estado y Acciones (el botón Editar quedaba fuera de pantalla). En mobile
@@ -569,6 +650,9 @@ export default function AdminProperties() {
         <table className="hidden md:table w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-outline-variant bg-surface-container-low">
+              {/* Columna del asa de arrastre (03/09/2026). Sin encabezado visible: el
+                  ícono ya se explica solo y un título ahí desbalancearía la tabla. */}
+              <th className="py-4 pl-4 pr-0 w-10"><span className="sr-only">Orden</span></th>
               <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-20">Imagen</th>
               <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Detalles</th>
               <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Precio</th>
@@ -581,7 +665,7 @@ export default function AdminProperties() {
             {/* Estado: cargando */}
             {loading && (
               <tr>
-                <td colSpan={5} className="py-16 text-center text-on-surface-variant">
+                <td colSpan={6} className="py-16 text-center text-on-surface-variant">
                   <div className="flex flex-col items-center gap-2">
                     <span className="material-symbols-outlined text-[36px] text-outline">
                       autorenew
@@ -595,7 +679,7 @@ export default function AdminProperties() {
             {/* Estado: sin resultados */}
             {!loading && paginated.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-16 text-center">
+                <td colSpan={6} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-2 text-on-surface-variant">
                     <span className="material-symbols-outlined text-[40px] text-outline">domain_disabled</span>
                     <p className="font-label-md text-label-md">
@@ -616,8 +700,48 @@ export default function AdminProperties() {
             )}
 
             {/* Filas de propiedades */}
-            {!loading && paginated.map(prop => (
-              <tr key={prop.id} className="border-b border-outline-variant hover:bg-surface-bright transition-colors duration-150">
+            {!loading && paginated.map((prop, i) => {
+              // Índice en la lista COMPLETA, no en la página. Es el que se usa para
+              // reordenar, así una fila se puede mover a la página anterior/siguiente.
+              const globalIndex = (page - 1) * PAGE_SIZE + i;
+              return (
+              <tr
+                key={prop.id}
+                draggable={canReorder && !savingOrder}
+                onDragStart={() => { dragItem.current = globalIndex; }}
+                onDragEnter={() => { dragOverItem.current = globalIndex; }}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnd={handleReorderDrop}
+                className={`border-b border-outline-variant hover:bg-surface-bright transition-colors duration-150 ${canReorder && !savingOrder ? 'cursor-grab active:cursor-grabbing' : ''} ${savingOrder ? 'opacity-60' : ''}`}
+              >
+
+                {/* Asa de arrastre + flechas (03/09/2026). Las flechas NO son decorativas:
+                    el drag & drop usa la API HTML5 de arrastre, que en pantallas táctiles
+                    no dispara dragstart — sin ellas no habría forma de reordenar desde una
+                    tablet. Es el mismo criterio que ya se usó para la media del formulario. */}
+                <td className="py-4 pl-4 pr-0 align-middle">
+                  <div className="flex flex-col items-center gap-0.5 text-outline">
+                    <button
+                      type="button"
+                      onClick={() => moveTo(globalIndex, globalIndex - 1)}
+                      disabled={!canReorder || savingOrder || globalIndex === 0}
+                      title="Subir"
+                      className="p-0.5 rounded hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-25 disabled:hover:bg-transparent"
+                    >
+                      <ChevronUp size={16} />
+                    </button>
+                    <GripVertical size={16} className={canReorder ? '' : 'opacity-30'} />
+                    <button
+                      type="button"
+                      onClick={() => moveTo(globalIndex, globalIndex + 1)}
+                      disabled={!canReorder || savingOrder || globalIndex === properties.length - 1}
+                      title="Bajar"
+                      className="p-0.5 rounded hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-25 disabled:hover:bg-transparent"
+                    >
+                      <ChevronDown size={16} />
+                    </button>
+                  </div>
+                </td>
 
                 {/* Thumbnail */}
                 <td className="py-4 px-6">
@@ -688,7 +812,8 @@ export default function AdminProperties() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
 
@@ -718,8 +843,10 @@ export default function AdminProperties() {
             </div>
           )}
 
-          {!loading && paginated.map(prop => (
-            <div key={prop.id} className="p-4 flex gap-3">
+          {!loading && paginated.map((prop, i) => {
+            const globalIndex = (page - 1) * PAGE_SIZE + i;
+            return (
+            <div key={prop.id} className={`p-4 flex gap-3 ${savingOrder ? 'opacity-60' : ''}`}>
               {/* Thumbnail */}
               <div className="w-20 h-20 rounded-lg overflow-hidden border border-outline-variant bg-surface-container flex items-center justify-center flex-shrink-0">
                 {thumbnailSrc(prop) ? (
@@ -749,6 +876,29 @@ export default function AdminProperties() {
 
                 {/* Acciones: Editar (prominente) + Eliminar */}
                 <div className="flex gap-2 mt-3">
+                  {/* Subir/bajar (03/09/2026): en mobile son la UNICA forma de reordenar
+                      —el drag & drop de la tabla ni siquiera existe acá, y la API HTML5 de
+                      arrastre no funciona con eventos táctiles—. */}
+                  <div className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveTo(globalIndex, globalIndex - 1)}
+                      disabled={!canReorder || savingOrder || globalIndex === 0}
+                      title="Subir"
+                      className="px-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-colors disabled:opacity-25"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveTo(globalIndex, globalIndex + 1)}
+                      disabled={!canReorder || savingOrder || globalIndex === properties.length - 1}
+                      title="Bajar"
+                      className="px-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-colors disabled:opacity-25"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
                   <button
                     onClick={() => navigate(`/admin/properties/${prop.id}/edit`)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-colors"
@@ -774,7 +924,8 @@ export default function AdminProperties() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* ---- Paginación ---- */}

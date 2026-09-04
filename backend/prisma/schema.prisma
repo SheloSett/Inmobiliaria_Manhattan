@@ -65,6 +65,17 @@ model Property {
   // ficha, que devuelve 404 y manda al catálogo), pero sigue existiendo en el panel
   // con sus fotos y sus métricas para poder republicarla cuando se quiera.
   published     Boolean       @default(true)
+  // displayOrder (03/09/2026): orden manual de las propiedades, definido arrastrandolas
+  // en el panel admin. Antes el orden era fijo (createdAt desc, la mas nueva primero) y
+  // no habia forma de decidir que propiedad mostrar arriba.
+  // Se ordena ASCENDENTE (0 = primera) y SIEMPRE con `createdAt desc` como segundo
+  // criterio de desempate: las filas que nunca se reordenaron comparten displayOrder 0 y
+  // entre ellas mantienen el orden de antes, asi que nada cambia de lugar hasta que
+  // alguien arrastre algo. Por el mismo motivo una propiedad nueva (default 0) aparece
+  // arriba de todo, que es el comportamiento que ya habia.
+  // Es un orden GLOBAL, no por filtro: al filtrar por operacion o tipo, las que quedan
+  // conservan su posicion relativa.
+  displayOrder  Int           @default(0)
   images        PropertyImage[]
   contacts      Contact[]
   amenities     Amenity[]     @relation("PropertyAmenities")

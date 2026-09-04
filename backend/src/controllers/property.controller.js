@@ -180,7 +180,17 @@ exports.getAll = async (req, res) => {
           images: { orderBy: { order: 'asc' } },
           amenities: { orderBy: { order: 'asc' } },
         },
-        orderBy: { createdAt: 'desc' },
+        // orderBy: { createdAt: 'desc' },
+        // ↑ Comentado (03/09/2026): el orden era fijo —la mas nueva primero— y el admin
+        //   no tenia forma de decidir que propiedad mostrar arriba. Ahora manda
+        //   `displayOrder` (ver schema.prisma), que se define arrastrando las filas en el
+        //   panel. `createdAt desc` se MANTIENE como segundo criterio: las propiedades
+        //   que nunca se reordenaron empatan en displayOrder y entre ellas conservan
+        //   exactamente el orden de antes, asi que el cambio no mueve nada por si solo.
+        //   `id desc` cierra el desempate para que el orden sea estable entre paginas
+        //   (sin un criterio unico, dos filas con la misma fecha podrian alternarse entre
+        //   consultas y aparecer duplicadas o faltantes al paginar).
+        orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
         skip: (Number(page) - 1) * Number(limit),
         take: Number(limit),
       }),
@@ -472,6 +482,52 @@ exports.update = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al actualizar propiedad' });
+  }
+};
+
+// Reordenar propiedades (03/09/2026). Recibe { ids: [...] } con los ids en el nuevo
+// orden y guarda la posicion de cada una en `displayOrder` (indice del array).
+// Solo admin (la ruta pasa por authMiddleware).
+//
+// Recibe la lista COMPLETA, no solo la fila movida: el panel manda todo el listado ya
+// reordenado, asi es imposible que queden posiciones duplicadas o huecos.
+//
+// Va en una transaccion: si falla un update a la mitad, un orden parcialmente aplicado
+// dejaria el listado mezclado sin que nadie se entere. O se aplica entero o nada.
+exports.reorder = async (req, res) => {
+  try {
+    const raw = req.body?.ids;
+    const ids = Array.isArray(raw) ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+    if (!ids.length) {
+      return res.status(400).json({ error: 'Faltan ids', message: 'No se recibio ninguna propiedad para ordenar.' });
+    }
+    // Ids repetidos harian que una propiedad pise la posicion de otra.
+    if (new Set(ids).size !== ids.length) {
+      return res.status(400).json({ error: 'Ids repetidos', message: 'La lista de orden tiene propiedades repetidas.' });
+    }
+    // Se descartan los ids que no existen (por ejemplo, una propiedad borrada desde otra
+    // pestaña mientras se arrastraba). Sin esto el update explota y se pierde todo el
+    // reordenamiento por una sola fila fantasma.
+    const existentes = await prisma.property.findMany({
+      where: { id: { in: ids } },
+      select: { id: true },
+    });
+    const validos = new Set(existentes.map((p) => p.id));
+    const finales = ids.filter((id) => validos.has(id));
+    if (!finales.length) {
+      return res.status(400).json({ error: 'Sin coincidencias', message: 'Ninguna de las propiedades enviadas existe.' });
+    }
+
+    await prisma.$transaction(
+      finales.map((id, idx) =>
+        prisma.property.update({ where: { id }, data: { displayOrder: idx } })
+      )
+    );
+
+    res.json({ ok: true, ordenadas: finales.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al reordenar', message: 'No se pudo guardar el nuevo orden.' });
   }
 };
 

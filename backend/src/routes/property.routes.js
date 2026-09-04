@@ -1,4 +1,5 @@
-const router = require('express').Router();
+const express = require('express');
+const router = express.Router();
 const ctrl = require('../controllers/property.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
@@ -9,6 +10,10 @@ const { heartbeatLimiter, contactClickLimiter } = require('../middleware/rateLim
 router.get('/live', authMiddleware, ctrl.getLive);
 router.get('/', ctrl.getAll);
 router.get('/:id', ctrl.getById);
+// '/reorder' va ANTES de '/:id' por el mismo motivo que '/live': si no, el PUT
+// /properties/reorder matchearia la ruta '/:id' con id = "reorder" y terminaria en
+// update() intentando editar la propiedad NaN.
+router.put('/reorder', authMiddleware, express.json(), ctrl.reorder);
 router.post('/', authMiddleware, upload.array('images', 20), ctrl.create);
 router.put('/:id', authMiddleware, upload.array('images', 20), ctrl.update);
 router.delete('/:id', authMiddleware, ctrl.remove);

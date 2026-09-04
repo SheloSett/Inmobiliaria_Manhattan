@@ -141,12 +141,20 @@ export default function Home() {
   // sección siempre mostraba "No hay propiedades disponibles aún" sin importar lo que
   // se marcara en el admin, porque nunca se conectó a la API (fix 20/07/2026).
   const [properties, setProperties] = useState([]);
+  // featuredLoaded (03/09/2026): hace falta para poder OCULTAR la seccion entera cuando no
+  // hay destacadas. Sin este flag no se puede distinguir "todavia no llego la respuesta"
+  // de "llego y no hay ninguna": en los dos casos `properties` es []. Si se ocultara solo
+  // mirando el largo, la seccion parpadearia —desaparece durante la carga y reaparece al
+  // llegar los datos—. Con el flag: mientras carga no se dibuja nada, y al terminar se
+  // dibuja solo si hay algo que mostrar.
+  const [featuredLoaded, setFeaturedLoaded] = useState(false);
   useEffect(() => {
     // Se guardan las propiedades CRUDAS (antes se mapeaban con mapPropertyToCard para la
     // card local); ahora la card compartida <SharedPropertyCard/> recibe la propiedad tal cual.
     api.get('/properties', { params: { featured: true, limit: 6 } })
       .then(res => setProperties(res.data.properties))
-      .catch(() => setProperties([]));
+      .catch(() => setProperties([]))
+      .finally(() => setFeaturedLoaded(true));
   }, []);
 
   return (
@@ -220,6 +228,16 @@ export default function Home() {
       </section>
 
       {/* Featured Properties Section */}
+      {/* 03/09/2026: la seccion ya no se dibuja si no hay destacadas. Antes se mostraba
+          igual, con el cartel "No hay propiedades disponibles aun" y el icono tachado, lo
+          que dejaba un hueco enorme y vacio en el medio del home — mala imagen para el
+          visitante y sin ninguna utilidad. Ahora el home simplemente pasa de la busqueda
+          a la seccion siguiente.
+          Se exige featuredLoaded para no parpadear mientras carga (ver el useEffect).
+          NOTA: el boton "Ver todas las propiedades" vive dentro de esta seccion, asi que
+          cuando no hay destacadas ese acceso al catalogo tampoco aparece; el catalogo
+          sigue estando en el navbar, que se muestra en todas las paginas. */}
+      {featuredLoaded && properties.length > 0 && (
       <section className="w-full py-stack-lg bg-surface">
         <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
           <div className="text-center mb-stack-lg">
@@ -250,6 +268,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Sell Property Section */}
       <section className="w-full py-stack-lg bg-surface-container-lowest border-t border-outline-variant">
