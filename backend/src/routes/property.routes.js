@@ -3,6 +3,9 @@ const router = express.Router();
 const ctrl = require('../controllers/property.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
+// Compresion de videos (10/09/2026): va entre multer y el controller. Comprime con
+// ffmpeg los videos que multer dejo en disco y los sube a Cloudinary ya livianos.
+const processVideos = require('../middleware/videoProcess.middleware');
 // Limiters de los POST públicos de tracking (11/08/2026).
 const { heartbeatLimiter, contactClickLimiter } = require('../middleware/rateLimit.middleware');
 
@@ -14,8 +17,11 @@ router.get('/:id', ctrl.getById);
 // /properties/reorder matchearia la ruta '/:id' con id = "reorder" y terminaria en
 // update() intentando editar la propiedad NaN.
 router.put('/reorder', authMiddleware, express.json(), ctrl.reorder);
-router.post('/', authMiddleware, upload.array('images', 20), ctrl.create);
-router.put('/:id', authMiddleware, upload.array('images', 20), ctrl.update);
+// router.post('/', authMiddleware, upload.array('images', 20), ctrl.create);
+// router.put('/:id', authMiddleware, upload.array('images', 20), ctrl.update);
+// ↑ Comentadas (10/09/2026): ahora pasa processVideos entre multer y el controller.
+router.post('/', authMiddleware, upload.array('images', 20), processVideos, ctrl.create);
+router.put('/:id', authMiddleware, upload.array('images', 20), processVideos, ctrl.update);
 router.delete('/:id', authMiddleware, ctrl.remove);
 // Tracking de la ficha pública (sin auth): heartbeat de presencia y clic a WhatsApp.
 // router.post('/:id/heartbeat', ctrl.trackHeartbeat);

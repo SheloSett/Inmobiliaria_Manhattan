@@ -109,7 +109,29 @@ app.use((err, req, res, next) => {
   if (err?.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({
       error: 'Archivo demasiado grande',
-      message: 'Uno de los archivos supera los 100 MB. Comprimi el video o subi uno mas corto.',
+      // message: 'Uno de los archivos supera los 100 MB. Comprimi el video o subi uno mas corto.',
+      // ↑ Comentado (10/09/2026): el tope subio a 500 MB (ver upload.middleware.js).
+      message: 'Uno de los archivos supera los 500 MB. Subi un video mas corto o grabalo en 1080p en vez de 4K.',
+    });
+  }
+
+  // 1b) Compresion de video con ffmpeg (10/09/2026, ver videoCompress.service.js).
+  if (err?.code === 'VIDEO_COMPRESS_TIMEOUT') {
+    return res.status(504).json({
+      error: 'Video demasiado largo',
+      message: 'El video tardo demasiado en comprimirse y se cancelo. Proba con un video mas corto (hasta 2 minutos aprox.) o grabado en 1080p.',
+    });
+  }
+  if (err?.code === 'VIDEO_COMPRESS_FAILED') {
+    return res.status(422).json({
+      error: 'No se pudo procesar el video',
+      message: 'No se pudo convertir el video. Puede estar danado o en un formato no soportado: proba exportarlo como MP4 y subirlo de nuevo.',
+    });
+  }
+  if (err?.code === 'VIDEO_COMPRESS_MISSING') {
+    return res.status(500).json({
+      error: 'ffmpeg no disponible',
+      message: 'El servidor no tiene instalado el conversor de video (ffmpeg). Avisale al desarrollador.',
     });
   }
   if (err?.code === 'LIMIT_FILE_COUNT' || err?.code === 'LIMIT_UNEXPECTED_FILE') {
@@ -160,4 +182,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));
+// app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));
+// ↑ Comentado (10/09/2026): hacia falta la referencia al server para subir el
+//   requestTimeout. Node 18+ cierra con 408 cualquier request que no termine de LLEGAR
+//   en 300 s (server.requestTimeout). Con videos de hasta 500 MB y la subida de un
+//   celular con 4G (5-10 Mbit/s) el body solo puede tardar 7-13 minutos en llegar; sin
+//   esto el backend cortaba a los 5 min aunque nginx (proxy_send_timeout) siguiera
+//   esperando. 20 min de margen. headersTimeout se deja en su default (60 s), que es
+//   el tiempo hasta recibir los HEADERS, y tiene que ser menor que requestTimeout.
+const server = app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));
+server.requestTimeout = 20 * 60 * 1000;

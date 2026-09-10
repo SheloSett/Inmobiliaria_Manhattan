@@ -63,6 +63,59 @@ const fileFilter = (req, file, cb) => {
   cb(null, ok);
 };
 
+// --- Videos a disco temporal (10/09/2026) ---
+// Los videos YA NO van directo a Cloudinary desde multer: el plan gratuito rechaza
+// videos de mas de 100 MB y un minuto grabado con un celular pesa eso o mucho mas. Ahora
+// multer los deja en un archivo temporal del VPS y videoProcess.middleware.js (que va
+// despues en la ruta) los comprime con ffmpeg y sube el resultado, mucho mas chico.
+// Las fotos siguen exactamente igual que antes: CloudinaryStorage de arriba. La rama de
+// video de `params` queda sin uso pero se deja por si hiciera falta volver atras.
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
+
+// os.tmpdir() es /tmp dentro del contenedor: no es el volumen de uploads (no hay que
+// persistir nada, el temporal se borra apenas termina de subirse) y se limpia solo si el
+// contenedor se recrea.
+const VIDEO_TMP_DIR = path.join(os.tmpdir(), 'manhattan-videos');
+
+const videoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    fs.mkdir(VIDEO_TMP_DIR, { recursive: true }, (err) => cb(err, VIDEO_TMP_DIR));
+  },
+  filename: (req, file, cb) => {
+    // Se conserva la extension original solo como ayuda para ffmpeg; el contenido lo
+    // detecta igual por los bytes.
+    const ext = (path.extname(file.originalname) || '.mp4').toLowerCase().slice(0, 8);
+    cb(null, `v_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+// Storage compuesto: multer acepta un solo storage por instancia, asi que este objeto
+// implementa la interfaz de multer (_handleFile / _removeFile) y delega segun el tipo.
+// `isLocalTemp` es la marca que usa videoProcess.middleware.js para saber que archivos
+// tiene que comprimir. _removeFile lo llama multer cuando un archivo POSTERIOR falla
+// (ej. supera fileSize) para limpiar los que ya habia guardado.
+const compositeStorage = {
+  _handleFile(req, file, cb) {
+    if (file.mimetype.startsWith('video/')) {
+      return videoStorage._handleFile(req, file, (err, info) =>
+        cb(err, info ? { ...info, isLocalTemp: true } : info)
+      );
+    }
+    return storage._handleFile(req, file, cb);
+  },
+  _removeFile(req, file, cb) {
+    return (file.isLocalTemp ? videoStorage : storage)._removeFile(req, file, cb);
+  },
+};
+
 // Límite subido a 100 MB para permitir videos (las fotos rara vez superan pocos MB).
 // 100 MB es el máximo de video en el plan gratuito de Cloudinary.
-module.exports = multer({ storage, fileFilter, limits: { fileSize: 100 * 1024 * 1024 } });
+// module.exports = multer({ storage, fileFilter, limits: { fileSize: 100 * 1024 * 1024 } });
+// ↑ Comentado (10/09/2026): ese tope lo dictaba Cloudinary. Como ahora el video que
+//   llega a Cloudinary es el comprimido, el limite de subida solo tiene que dejar entrar
+//   un video de celular sin comprimir: 500 MB alcanza para ~1 min de 4K o varios de
+//   1080p. Tiene que ser coherente con MAX_VIDEO_MB del panel admin
+//   (AdminPropertyForm.jsx) y con client_max_body_size de los dos nginx (520M).
+module.exports = multer({ storage: compositeStorage, fileFilter, limits: { fileSize: 500 * 1024 * 1024 } });

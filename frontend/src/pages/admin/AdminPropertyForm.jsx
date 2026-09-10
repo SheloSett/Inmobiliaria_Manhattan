@@ -82,8 +82,20 @@ const MAX_IMAGES = 20;
 //                            no por archivo: 8 fotos + 1 video "chicos" pueden pasarse
 //                            igual aunque ninguno supere el limite individual. Se dejan
 //                            10 MB de aire para el resto de los campos del formulario.
-const MAX_FILE_MB = 100;
-const MAX_TOTAL_MB = 100;
+// const MAX_FILE_MB = 100;
+// const MAX_TOTAL_MB = 100;
+// ↑ Comentados (10/09/2026): el tope de 100 MB lo dictaba Cloudinary y era el motivo por
+//   el que el cliente no podia subir un video de 1 minuto (un celular graba 60-130 MB
+//   por minuto en 1080p y 300-400 MB en 4K). Ahora el backend comprime los videos con
+//   ffmpeg ANTES de mandarlos a Cloudinary, asi que el limite solo tiene que dejar
+//   entrar el video crudo. Se separa el tope de fotos del de videos:
+//   - 100 MB por foto     -> sin cambios.
+//   - 500 MB por video    -> limits.fileSize de multer (upload.middleware.js).
+//   - 500 MB en total     -> client_max_body_size de los dos nginx (520M).
+const MAX_IMAGE_MB = 100;
+const MAX_VIDEO_MB = 500;
+const MAX_TOTAL_MB = 500;
+const maxMBFor = (f) => (f.type.startsWith('video/') ? MAX_VIDEO_MB : MAX_IMAGE_MB);
 const MB = 1024 * 1024;
 const fmtMB = (bytes) => `${(bytes / MB).toFixed(1)} MB`;
 
@@ -206,10 +218,13 @@ export default function AdminPropertyForm() {
     // Validacion de peso POR ARCHIVO antes de subir nada (03/09/2026). Los que se pasan
     // se descartan con un aviso que dice el nombre y cuanto pesa, en vez de dejar que la
     // subida falle despues de varios minutos con un error generico.
-    const tooBig = media.filter(f => f.size > MAX_FILE_MB * MB);
-    const ok = media.filter(f => f.size <= MAX_FILE_MB * MB);
+    // const tooBig = media.filter(f => f.size > MAX_FILE_MB * MB);
+    // const ok = media.filter(f => f.size <= MAX_FILE_MB * MB);
+    // ↑ Comentado (10/09/2026): el tope ahora depende del tipo (foto o video).
+    const tooBig = media.filter(f => f.size > maxMBFor(f) * MB);
+    const ok = media.filter(f => f.size <= maxMBFor(f) * MB);
     tooBig.forEach(f =>
-      toast.error(`"${f.name}" pesa ${fmtMB(f.size)} y el maximo es ${MAX_FILE_MB} MB. Comprimilo o subi un video mas corto.`, { duration: 6000 })
+      toast.error(`"${f.name}" pesa ${fmtMB(f.size)} y el maximo es ${maxMBFor(f)} MB. ${f.type.startsWith('video/') ? 'Subi un video mas corto o grabalo en 1080p en vez de 4K.' : 'Reduci la foto antes de subirla.'}`, { duration: 6000 })
     );
     if (!ok.length) return;
 
@@ -554,7 +569,9 @@ export default function AdminPropertyForm() {
                 {/* o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · fotos JPG/PNG/WebP · videos MP4/MOV/WebM hasta 100 MB) */}
                 {/* ↑ Comentado (03/09/2026): no mencionaba el limite de peso TOTAL por
                     guardado, que es el que en la practica hacia fallar la subida. */}
-                o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · {MAX_FILE_MB} MB por archivo · {MAX_TOTAL_MB} MB en total por guardado)
+                {/* o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · {MAX_FILE_MB} MB por archivo · {MAX_TOTAL_MB} MB en total por guardado) */}
+                {/* ↑ Comentado (10/09/2026): topes separados para fotos y videos. */}
+                o haz clic para explorar tus archivos (Máx {MAX_IMAGES} archivos · fotos hasta {MAX_IMAGE_MB} MB · videos hasta {MAX_VIDEO_MB} MB, se comprimen solos al subir · {MAX_TOTAL_MB} MB en total por guardado)
               </p>
               {newImages.length > 0 && (
                 <p className="font-label-md text-label-md text-secondary mt-3">
@@ -777,7 +794,10 @@ export default function AdminPropertyForm() {
             <div className="pt-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  {uploadPct < 100 ? `Subiendo archivos... ${uploadPct}%` : 'Procesando en el servidor... esto puede tardar un rato si hay videos.'}
+                  {/* {uploadPct < 100 ? `Subiendo archivos... ${uploadPct}%` : 'Procesando en el servidor... esto puede tardar un rato si hay videos.'} */}
+                  {/* ↑ Comentado (10/09/2026): ahora el servidor ademas COMPRIME los videos
+                      (1 a 3 minutos por cada minuto de video en 4K), conviene decirlo. */}
+                  {uploadPct < 100 ? `Subiendo archivos... ${uploadPct}%` : 'Procesando en el servidor... si hay videos se estan comprimiendo, puede tardar unos minutos. No cierres esta pestaña.'}
                 </p>
                 {uploadPct < 100 && (
                   <span className="font-label-sm text-label-sm text-on-surface-variant">{uploadPct}%</span>

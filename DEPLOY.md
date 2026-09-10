@@ -229,7 +229,12 @@ server {
     #   nunca llegaba a aplicarse. Todo video de más de 20 MB moría acá con un 413.
     #   Se sube a 110M para que coincida con el nginx interno (10 MB de aire sobre el
     #   límite de 100 MB por archivo que aplica multer).
-    client_max_body_size 110M;
+    # client_max_body_size 110M;
+    # ↑ Comentado (10/09/2026): el backend ahora comprime los videos con ffmpeg antes de
+    #   mandarlos a Cloudinary, así que tiene que poder ENTRAR un video de celular sin
+    #   comprimir (un minuto en 4K son 300-400 MB). 520M = 500 MB por archivo de multer
+    #   + 20 MB de aire. Mismo valor que frontend/nginx.conf.
+    client_max_body_size 520M;
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -360,6 +365,30 @@ ssh usuario@IP_DEL_VPS
 cd /opt/inmobiliaria-manhattan
 git pull
 docker compose up -d --build
+```
+
+### Actualización del 10/09/2026 (compresión de videos con ffmpeg)
+
+Además del `git pull` + `docker compose up -d --build` de siempre (el build tarda unos
+minutos más la primera vez porque instala ffmpeg en la imagen del backend), hay que
+subir el límite de subida en el nginx del sistema, que es el que manda:
+
+```bash
+sudo sed -i 's/client_max_body_size 110M;/client_max_body_size 520M;/' /etc/nginx/sites-available/manhattan
+grep -n "client_max_body_size" /etc/nginx/sites-available/manhattan   # tiene que decir 520M (línea sin #)
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Para confirmar que el backend nuevo tiene ffmpeg:
+
+```bash
+docker exec manhattan_backend ffmpeg -version | head -1
+```
+
+Y al subir un video desde el panel, en los logs se ve la compresión:
+
+```bash
+docker logs manhattan_backend --tail 50 | grep "\[video\]"
 ```
 
 ## Backup de la base de datos
