@@ -17,6 +17,8 @@ import Applications from './pages/Applications';
 import LegalPage from './pages/LegalPage';
 import Sitemap from './pages/Sitemap';
 import Help from './pages/Help';
+// Página de links estilo Linktree para la bio de Instagram/TikTok (08/10/2026).
+import LinksPage from './pages/LinksPage';
 
 // Páginas admin
 import AdminLogin from './pages/admin/AdminLogin';
@@ -64,6 +66,8 @@ export default function App() {
           <Route path="/terminos" element={<LegalPage pageKey="terms" />} />
           <Route path="/mapa-del-sitio" element={<Sitemap />} />
           <Route path="/ayuda" element={<Help />} />
+          {/* Links estilo Linktree (editable desde Ajustes → Contenido → Links). */}
+          <Route path="/links" element={<LinksPage />} />
 
           {/* Admin */}
           <Route path="/admin/login" element={<AdminLogin />} />

@@ -23,7 +23,20 @@ const PORT = process.env.PORT || 4000;
 // (que hace proxy de /api). Sin esto, express-rate-limit vería la IP del proxy para TODAS
 // las requests y limitaría a todos los visitantes juntos. Con '1' confía en un solo hop
 // (el nginx) y toma la IP real del X-Forwarded-For. En local (sin proxy) no molesta.
-app.set('trust proxy', 1);
+// app.set('trust proxy', 1);
+// ↑ Comentado (08/10/2026): '1' era correcto solo cuando el nginx del contenedor recibía al
+//   visitante DIRECTO (VPS viejo, puerto 8080 abierto, antes del 17/08). Desde que hay un
+//   proxy más adelante —el nginx del sistema en el VPS viejo, y hoy el Caddy compartido del
+//   VPS nuevo— la cadena es: visitante → Caddy → nginx del frontend → backend. Caddy pone
+//   X-Forwarded-For = IP del visitante y el nginx le agrega la IP de Caddy al final, así que
+//   con un solo hop de confianza express tomaba la IP de CADDY para todos: los rate limiters
+//   contaban a todos los visitantes juntos (verificado: dos IPs distintas descontaban del
+//   mismo contador, 299 → 298 → 297). Con más tráfico, la consulta n°9 de cualquiera en 10
+//   minutos se rechazaba y un atacante podía bloquearle el login al admin.
+//   Con '2' se confía en los dos proxies (nginx y Caddy) y se toma la IP que puso Caddy. No
+//   se puede falsificar: Caddy no confía en el X-Forwarded-For que mande el cliente, lo pisa.
+//   Si algún día cambia la cantidad de proxies adelante, este número tiene que cambiar igual.
+app.set('trust proxy', 2);
 
 // app.use(cors({ origin: '*' }));
 // ↑ Comentado (17/08/2026, al configurar el dominio propio): `origin: '*'` dejaba que

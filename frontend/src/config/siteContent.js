@@ -22,6 +22,32 @@ const VALUATIONS_HERO_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AX
 // con el mensaje de "sumate al equipo". Es editable desde Ajustes → Contenido.
 const APPLICATIONS_HERO_IMG = ABOUT_IMG;
 
+// ── Página de links (08/10/2026) ──────────────────────────────────────────────
+// Links reales que el cliente tenía en su Linktree (linktr.ee/inmobiliariaManhattan),
+// usados como defaults de la página /links.
+const LINKS_WEBSITE = 'https://manhattannegociosinmobiliarios.com.ar';
+const LINKS_TIKTOK = 'https://www.tiktok.com/@manhattan.inmobiliaria';
+const LINKS_INSTAGRAM = 'https://www.instagram.com/manhattan.inmo';
+// En el Linktree el número figuraba como 541160479977 (sin el 9). Para celulares de
+// Argentina WhatsApp espera 54 + 9 + número, que es el formato que usa todo el resto del
+// sitio para este mismo número; el mensaje precargado es el mismo que tenía el cliente.
+const LINKS_WHATSAPP = `https://wa.me/5491160479977?text=${encodeURIComponent('hola Salomón, quería que me asesores en mi busqueda de')}`;
+
+// Redes/tipos de link disponibles en la página de links. El `value` define el ícono
+// (ver LinksPage.jsx) y cómo se completa un enlace escrito a medias (@usuario, número…).
+export const LINK_NETWORK_OPTIONS = [
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'website', label: 'Sitio web' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Teléfono (llamar)' },
+  { value: 'link', label: 'Otro enlace' },
+];
+
 export const PAGES = [
   {
     key: 'home',
@@ -309,6 +335,76 @@ export const PAGES = [
         ],
       },
       { key: 'copyright', label: 'Texto de copyright', type: 'text', default: '© 2024 Manhattan Negocios Inmobiliarios. Todos los derechos reservados.' },
+    ],
+  },
+  // ── Página de links estilo Linktree (08/10/2026) ─────────────────────────────
+  // Página pública /links (LinksPage.jsx) pensada para poner en la bio de Instagram /
+  // TikTok: logo, nombre, fila de íconos de redes y una lista de botones. Reemplaza al
+  // Linktree externo (linktr.ee/inmobiliariaManhattan): los defaults replican los links
+  // que el cliente tenía cargados ahí, así la página sale andando sin tocar el panel.
+  // `publicPath` hace que el editor muestre un acceso directo a la página pública.
+  {
+    key: 'links',
+    label: 'Links (Linktree)',
+    icon: 'link',
+    publicPath: '/links',
+    fields: [
+      // Si queda vacío se usa el logo del Footer (el mismo del navbar).
+      { key: 'avatar', label: 'Foto de perfil / logo (si queda vacío se usa el logo del Footer)', type: 'image', default: '' },
+      { key: 'name', label: 'Nombre', type: 'text', default: 'Inmobiliaria Manhattan' },
+      { key: 'bio', label: 'Texto debajo del nombre (opcional)', type: 'textarea', default: '' },
+      // Fila de íconos debajo del nombre (como la de Linktree). Solo ícono, sin texto.
+      {
+        key: 'icons',
+        label: 'Íconos de redes (fila debajo del nombre)',
+        type: 'list',
+        itemLabel: 'Ícono',
+        itemFields: [
+          { key: 'network', label: 'Red', type: 'select', options: LINK_NETWORK_OPTIONS, default: 'instagram' },
+          { key: 'url', label: 'Enlace (URL completa, o @usuario para Instagram/TikTok, o el número para WhatsApp)', type: 'text', default: '' },
+        ],
+        default: [
+          { network: 'instagram', url: LINKS_INSTAGRAM },
+          { network: 'tiktok', url: LINKS_TIKTOK },
+          { network: 'whatsapp', url: LINKS_WHATSAPP },
+          { network: 'website', url: LINKS_WEBSITE },
+        ],
+      },
+      // Botones. "Formato" elige entre el botón clásico (imagen chica a la izquierda) y
+      // la tarjeta destacada (imagen grande arriba, como la de Instagram del Linktree).
+      // Si un botón no tiene imagen, se muestra el ícono de la red elegida; en el formato
+      // destacado sin imagen se usa el logo.
+      {
+        key: 'buttons',
+        label: 'Botones',
+        type: 'list',
+        itemLabel: 'Botón',
+        itemFields: [
+          { key: 'image', label: 'Imagen', type: 'image', default: '', placeholderIcon: 'add_photo_alternate', caption: 'Imagen (opcional)' },
+          { key: 'title', label: 'Texto del botón', type: 'text', default: '' },
+          { key: 'url', label: 'Enlace (URL completa, o @usuario para Instagram/TikTok, o el número para WhatsApp)', type: 'text', default: '' },
+          { key: 'network', label: 'Ícono (se usa si el botón no tiene imagen)', type: 'select', options: LINK_NETWORK_OPTIONS, default: 'website' },
+          {
+            key: 'style',
+            label: 'Formato',
+            type: 'select',
+            options: [
+              { value: 'classic', label: 'Botón (imagen chica a la izquierda)' },
+              { value: 'featured', label: 'Destacado (imagen grande arriba)' },
+            ],
+            default: 'classic',
+          },
+        ],
+        default: [
+          { image: '', title: 'Manhattan Negocios Inmobiliarios SITIO WEB', url: LINKS_WEBSITE, network: 'website', style: 'classic' },
+          { image: '', title: 'Tiktok @manhattan.inmobiliaria', url: LINKS_TIKTOK, network: 'tiktok', style: 'classic' },
+          { image: '', title: 'Instagram', url: LINKS_INSTAGRAM, network: 'instagram', style: 'featured' },
+          { image: '', title: 'Escribinos por WhatsApp', url: LINKS_WHATSAPP, network: 'whatsapp', style: 'classic' },
+        ],
+      },
+      // No se ve en la página: es lo que aparece en Google y en la tarjeta al compartir el
+      // link por WhatsApp (lo arma el prerender de backend/src/routes/seo.routes.js).
+      { key: 'seoDescription', label: 'Descripción para Google y para la vista previa al compartir', type: 'textarea', default: 'Casas, departamentos, locales y terrenos en venta y alquiler en CABA. Tasaciones sin cargo.' },
     ],
   },
   // ── Páginas legales / informativas del footer (26/07/2026) ──────────────────

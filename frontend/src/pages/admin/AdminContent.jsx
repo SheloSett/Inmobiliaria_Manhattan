@@ -75,6 +75,19 @@ export default function AdminContent() {
     });
   };
 
+  // Mover un ítem una posición arriba (delta -1) o abajo (+1). Agregado el 08/10/2026 con
+  // la página de links, donde el orden de los botones es lo que ve el visitante; antes la
+  // única forma de reordenar una lista era borrar y volver a cargar.
+  const moveListItem = (fieldKey, index, delta) => {
+    setValues((prev) => {
+      const list = [...(prev[activePage][fieldKey] || [])];
+      const target = index + delta;
+      if (target < 0 || target >= list.length) return prev;
+      [list[index], list[target]] = [list[target], list[index]];
+      return { ...prev, [activePage]: { ...prev[activePage], [fieldKey]: list } };
+    });
+  };
+
   // Sube un archivo y aplica la URL resultante con applyUrl(url). `uploadKey` es un
   // identificador único del destino (para mostrar "Subiendo..." solo en ese lugar).
   const handleUpload = async (uploadKey, file, applyUrl) => {
@@ -148,6 +161,20 @@ export default function AdminContent() {
           <h2 className="font-headline-md text-headline-md text-primary">
             Editar contenido del sitio: <span className="text-secondary">{page?.label}</span>
           </h2>
+          {/* Acceso directo a la página pública (08/10/2026). Solo para las páginas que
+              declaran `publicPath` en siteContent.js (por ahora, la de links). Muestra lo
+              GUARDADO: los cambios sin guardar no se ven ahí. */}
+          {page?.publicPath && (
+            <a
+              href={page.publicPath}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-secondary hover:underline"
+            >
+              <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+              Ver página ({page.publicPath})
+            </a>
+          )}
         </div>
 
         <div className="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
@@ -229,7 +256,12 @@ export default function AdminContent() {
                                     {item[itemImgField.key] ? (
                                       <img src={item[itemImgField.key]} alt={item.name || 'Integrante'} className="w-full h-full object-cover" />
                                     ) : (
-                                      <span className="material-symbols-outlined text-outline text-[28px]">person</span>
+                                      // <span className="material-symbols-outlined text-outline text-[28px]">person</span>
+                                      // ↑ Comentado (08/10/2026): el ícono "person" estaba fijo porque la
+                                      //   única lista con imagen era el equipo. Ahora cada subcampo puede
+                                      //   definir su `placeholderIcon` (los botones de links usan uno de
+                                      //   foto); si no lo define, sigue siendo "person".
+                                      <span className="material-symbols-outlined text-outline text-[28px]">{itemImgField.placeholderIcon || 'person'}</span>
                                     )}
                                     <div className="absolute inset-0 bg-primary/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                       <span className="material-symbols-outlined text-white text-[20px]">
@@ -244,7 +276,22 @@ export default function AdminContent() {
                                     className="hidden"
                                     onChange={(e) => { handleUpload(inputKey, e.target.files[0], (url) => setListItem(field.key, index, itemImgField.key, url)); e.target.value = ''; }}
                                   />
-                                  <p className="text-[11px] text-on-surface-variant text-center mt-1">Cambiar foto</p>
+                                  {/* <p className="text-[11px] text-on-surface-variant text-center mt-1">Cambiar foto</p> */}
+                                  {/* ↑ Comentado (08/10/2026): mismo motivo que el ícono de arriba —el
+                                      texto era fijo del equipo—. Ahora sale de `caption` del subcampo. */}
+                                  <p className="text-[11px] text-on-surface-variant text-center mt-1">{itemImgField.caption || 'Cambiar foto'}</p>
+                                  {/* Quitar la imagen (08/10/2026). Antes, una vez subida, no había
+                                      forma de volver a "sin imagen"; en los botones de links eso
+                                      significa volver a mostrar el ícono de la red. */}
+                                  {item[itemImgField.key] && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setListItem(field.key, index, itemImgField.key, '')}
+                                      className="block mx-auto mt-1 text-[11px] font-semibold text-secondary hover:underline"
+                                    >
+                                      Quitar
+                                    </button>
+                                  )}
                                 </div>
                               )}
                               {/* Campos del ítem (texto o select según su tipo) */}
@@ -284,14 +331,36 @@ export default function AdminContent() {
                                   que el botón "Agregar" de abajo): antes estaba fijo en
                                   "Eliminar integrante" y se veía igual en todas las listas
                                   — testimonios, beneficios, redes, preguntas (10/08/2026). */}
-                              <button
-                                type="button"
-                                onClick={() => removeListItem(field.key, index)}
-                                title={`Eliminar ${field.itemLabel?.toLowerCase() || 'ítem'}`}
-                                className="self-start p-2 text-on-surface-variant hover:text-secondary hover:bg-secondary-fixed rounded transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[20px]">delete</span>
-                              </button>
+                              {/* Subir / bajar / eliminar (subir y bajar agregados el 08/10/2026,
+                                  ver moveListItem). Se deshabilitan en los extremos de la lista. */}
+                              <div className="self-start flex sm:flex-col gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => moveListItem(field.key, index, -1)}
+                                  disabled={index === 0}
+                                  title="Subir"
+                                  className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveListItem(field.key, index, 1)}
+                                  disabled={index === (pageValues[field.key] || []).length - 1}
+                                  title="Bajar"
+                                  className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">arrow_downward</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeListItem(field.key, index)}
+                                  title={`Eliminar ${field.itemLabel?.toLowerCase() || 'ítem'}`}
+                                  className="p-2 text-on-surface-variant hover:text-secondary hover:bg-secondary-fixed rounded transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );

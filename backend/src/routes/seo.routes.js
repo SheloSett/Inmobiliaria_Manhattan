@@ -77,7 +77,18 @@ const STATIC_PAGES = [
   { path: '/ayuda', priority: '0.3', changefreq: 'monthly' },
   { path: '/privacidad', priority: '0.2', changefreq: 'yearly' },
   { path: '/terminos', priority: '0.2', changefreq: 'yearly' },
+  // Página de links estilo Linktree (08/10/2026), la que va en la bio de Instagram.
+  { path: '/links', priority: '0.4', changefreq: 'monthly' },
 ];
+
+// Defaults de la página /links para el prerender. Son los mismos que los del esquema del
+// CMS (frontend/src/config/siteContent.js, página "links"): si el admin nunca guardó esa
+// página no hay fila en PageContent, y la tarjeta de WhatsApp tiene que salir igual.
+const LINKS_DEFAULTS = {
+  name: 'Inmobiliaria Manhattan',
+  seoDescription:
+    'Casas, departamentos, locales y terrenos en venta y alquiler en CABA. Tasaciones sin cargo.',
+};
 
 // Escapado de HTML/XML. NO es opcional: title, description, city y neighborhood los
 // escribe el admin desde el panel, así que son texto no confiable que termina dentro
@@ -274,6 +285,26 @@ router.get('/prerender/*', async (req, res) => {
       }
       // Si la propiedad no existe se sigue de largo y se devuelve la tarjeta genérica
       // del sitio, que es mejor que un 404 sin previsualización.
+    }
+
+    // Página de links (08/10/2026): es el link que el cliente pega en Instagram y manda por
+    // WhatsApp, así que la tarjeta muestra SU nombre, su descripción y su foto de perfil
+    // (o el logo del sitio), en vez de la tarjeta genérica de "Propiedades en venta…".
+    if (/^\/links\/?$/.test(path)) {
+      const row = await prisma.pageContent.findUnique({ where: { page: 'links' } });
+      const links = row?.content || {};
+      return res
+        .status(200)
+        .header('Content-Type', 'text/html; charset=utf-8')
+        .send(
+          renderMetaHtml({
+            title: `${links.name || LINKS_DEFAULTS.name} — Links`,
+            description: truncate(links.seoDescription || LINKS_DEFAULTS.seoDescription),
+            image: absoluteUrl(links.avatar) || absoluteUrl(identity.logo) || `${SITE_URL}/favicon.png`,
+            url,
+            siteName,
+          })
+        );
     }
 
     // Resto de las páginas: tarjeta genérica del sitio.
