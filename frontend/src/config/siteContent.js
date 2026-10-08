@@ -10,8 +10,13 @@
 //   - Si el admin nunca editó una página, se ve el texto/imagen por defecto de acá.
 //   - Agregar o quitar un campo NO requiere migrar la BD: se cambia solo este esquema.
 //
-// Tipos de campo soportados por el editor: 'text', 'textarea', 'image'.
+// Tipos de campo soportados por el editor: 'text', 'textarea', 'image', 'list',
+// 'select', 'color' y 'section' (solo un título separador, no guarda nada). Un campo
+// puede traer `showIf: (valoresDeLaPagina) => boolean` para mostrarse solo cuando
+// aplica (09/10/2026, con los colores de la página de links).
 // ─────────────────────────────────────────────────────────────────────────────
+
+import { LINKS_THEME_DEFAULTS } from '../utils/linksTheme';
 
 // URLs de imágenes por defecto (las mismas que estaban hardcodeadas en cada página).
 const HOME_HERO_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCR9JNx3pctIFIv3SGP9YvkxZNpN16EH8EML-ph48-vXpb_KlnIhchJXhJqFaztJ5ITGTpP2xkCUnD41sjkYBv-eBRQK0DB35X886FT7vbi2qw3kDnEPSZvVmbFG2hLJHjxn1XyIgbtzfp9CnK6YrK8S6UE5MlyLvwrMcXMUZo0D8b5L2CYrOoRExYHT3qjkhBoCUVgywKb3UGUv17cPIZptD5rBrszt2aMloJ1UXp5GQsbpiQB-WWk_n4JdFe4-VnxRd94X-OEcn0';
@@ -402,6 +407,57 @@ export const PAGES = [
           { image: '', title: 'Escribinos por WhatsApp', url: LINKS_WHATSAPP, network: 'whatsapp', style: 'classic' },
         ],
       },
+      // ── Apariencia (09/10/2026) ──────────────────────────────────────────────
+      // Color del fondo y de los botones, a pedido del cliente. La lógica que convierte
+      // estos valores en estilos vive en utils/linksTheme.js (la usan la página y la
+      // vista previa del editor). Los defaults reproducen el diseño original, así la
+      // página se ve igual que antes hasta que el cliente toque algo.
+      // `showIf` oculta en el editor los campos que no aplican al estilo elegido (ej: los
+      // colores no se piden cuando el fondo es el de Manhattan).
+      {
+        key: 'appearanceSection',
+        type: 'section',
+        label: 'Apariencia: fondo y botones',
+        help: 'Elegí el estilo y los colores. La vista previa muestra cómo queda antes de guardar. El color del texto se acomoda solo (blanco sobre colores oscuros, azul sobre claros).',
+      },
+      {
+        key: 'bgStyle',
+        label: 'Estilo del fondo',
+        type: 'select',
+        options: [
+          { value: 'brand', label: 'Manhattan (azul marino con brillo rojo)' },
+          { value: 'solid', label: 'Color liso' },
+          { value: 'gradient', label: 'Degradé (dos colores)' },
+        ],
+        default: LINKS_THEME_DEFAULTS.bgStyle,
+      },
+      { key: 'bgColor', label: 'Color del fondo', type: 'color', default: LINKS_THEME_DEFAULTS.bgColor, showIf: (v) => v.bgStyle === 'solid' || v.bgStyle === 'gradient' },
+      { key: 'bgColor2', label: 'Segundo color del fondo (abajo)', type: 'color', default: LINKS_THEME_DEFAULTS.bgColor2, showIf: (v) => v.bgStyle === 'gradient' },
+      {
+        key: 'buttonStyle',
+        label: 'Estilo de los botones',
+        type: 'select',
+        options: [
+          { value: 'glass', label: 'Vidrio (translúcido)' },
+          { value: 'solid', label: 'Liso' },
+          { value: 'gradient', label: 'Degradé (dos colores)' },
+          { value: 'outline', label: 'Solo borde' },
+        ],
+        default: LINKS_THEME_DEFAULTS.buttonStyle,
+      },
+      { key: 'buttonColor', label: 'Color de los botones', type: 'color', default: LINKS_THEME_DEFAULTS.buttonColor },
+      { key: 'buttonColor2', label: 'Segundo color de los botones', type: 'color', default: LINKS_THEME_DEFAULTS.buttonColor2, showIf: (v) => v.buttonStyle === 'gradient' },
+      {
+        key: 'buttonText',
+        label: 'Texto de los botones',
+        type: 'select',
+        options: [
+          { value: 'auto', label: 'Automático (según el color del botón)' },
+          { value: 'light', label: 'Blanco' },
+          { value: 'dark', label: 'Oscuro (azul marino)' },
+        ],
+        default: LINKS_THEME_DEFAULTS.buttonText,
+      },
       // No se ve en la página: es lo que aparece en Google y en la tarjeta al compartir el
       // link por WhatsApp (lo arma el prerender de backend/src/routes/seo.routes.js).
       { key: 'seoDescription', label: 'Descripción para Google y para la vista previa al compartir', type: 'textarea', default: 'Casas, departamentos, locales y terrenos en venta y alquiler en CABA. Tasaciones sin cargo.' },
@@ -500,6 +556,8 @@ export function defaultsFor(pageKey) {
   const page = PAGES.find((p) => p.key === pageKey);
   if (!page) return {};
   return page.fields.reduce((acc, f) => {
+    // Los separadores ('section') no tienen valor: no van al contenido guardado.
+    if (f.type === 'section') return acc;
     acc[f.key] = f.default;
     return acc;
   }, {});

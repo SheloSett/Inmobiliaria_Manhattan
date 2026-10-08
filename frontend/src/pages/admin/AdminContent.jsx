@@ -2,12 +2,97 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { PAGES, defaultsFor } from '../../config/siteContent';
+import { LinksPageView } from '../LinksPage';
+import { validHex } from '../../utils/linksTheme';
 
 // Editor de contenido del sitio (mini-CMS) — basado en el template Stitch
 // admin_settings_content. Sub-nav de páginas a la izquierda y editor de los campos
 // de la página seleccionada a la derecha. El esquema de campos y sus defaults viven
 // en frontend/src/config/siteContent.js; acá solo se renderizan y se guardan por
 // página vía PUT /api/content/:page. Las imágenes se suben con POST /api/content/upload.
+
+// ── Campo de color (09/10/2026) ──────────────────────────────────────────────
+// Agregado con los colores de la página de links. Selector nativo del navegador (en el
+// celular abre la paleta del sistema) + el código hex escrito a mano + atajos con los
+// colores de la marca, para que el cliente no tenga que saber ningún código.
+const COLOR_PRESETS = [
+  { value: '#00172b', label: 'Azul Manhattan' },
+  { value: '#002c4b', label: 'Azul claro' },
+  { value: '#bb000f', label: 'Rojo Manhattan' },
+  { value: '#000000', label: 'Negro' },
+  { value: '#ffffff', label: 'Blanco' },
+  { value: '#42474e', label: 'Gris' },
+  { value: '#c9a84c', label: 'Dorado' },
+];
+
+function ColorField({ value, onChange }) {
+  const hex = validHex(value);
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <label className="relative w-12 h-12 rounded-lg border border-outline-variant overflow-hidden cursor-pointer shadow-sm flex-shrink-0">
+        {/* El input nativo se estira para cubrir todo el cuadrado (sin su borde por defecto). */}
+        <input
+          type="color"
+          value={hex || '#000000'}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)] cursor-pointer border-0 p-0"
+          aria-label="Elegir color"
+        />
+      </label>
+      <input
+        type="text"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="#000000"
+        maxLength={7}
+        spellCheck={false}
+        className={`w-28 border rounded-lg p-2.5 font-mono text-sm text-on-surface bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors ${hex ? 'border-outline-variant' : 'border-error'}`}
+      />
+      <div className="flex items-center gap-1.5" role="group" aria-label="Colores de la marca">
+        {COLOR_PRESETS.map((p) => (
+          <button
+            key={p.value}
+            type="button"
+            title={p.label}
+            onClick={() => onChange(p.value)}
+            className={`w-7 h-7 rounded-full border transition-transform hover:scale-110 ${hex === p.value ? 'ring-2 ring-primary ring-offset-1 border-transparent' : 'border-outline-variant'}`}
+            style={{ backgroundColor: p.value }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Vista previa de la página de links (09/10/2026) ──────────────────────────
+// Pinta la misma vista que /links (LinksPageView) con los valores que el admin está
+// editando, todavía sin guardar, adentro de un marco con forma de celular. Pensada
+// sobre todo para los colores: ver la combinación antes de guardar evita el ciclo
+// guardar → abrir la página → volver. Los links no son clickeables (pointer-events-none),
+// solo se puede scrollear. El logo del Footer es el fallback del avatar, igual que en
+// la página real.
+function LinksPreview({ content, allValues }) {
+  return (
+    <aside className="order-first xl:order-last xl:w-[340px] xl:flex-shrink-0 xl:sticky xl:top-6">
+      <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2 text-center xl:text-left">
+        Vista previa
+      </p>
+      <div className="mx-auto w-full max-w-[340px] h-[440px] xl:h-[560px] rounded-[2rem] border-[6px] border-primary bg-primary shadow-2xl overflow-hidden">
+        <div className="h-full overflow-y-auto overscroll-contain flex flex-col rounded-[1.6rem]">
+          <div className="flex-1 flex flex-col pointer-events-none select-none">
+            <LinksPageView content={content} logoFallback={allValues.footer?.logo} preview />
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-on-surface-variant text-center xl:text-left">
+        Se actualiza al instante. Los visitantes ven los cambios recién cuando guardás.
+      </p>
+    </aside>
+  );
+}
+
+// Páginas que tienen vista previa en vivo, por su `key` en siteContent.js.
+const PREVIEWS = { links: LinksPreview };
 
 // Construye el objeto de valores inicial de todas las páginas: defaults mergeados
 // con lo que venga guardado en la BD.
@@ -177,16 +262,55 @@ export default function AdminContent() {
           )}
         </div>
 
-        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+        {/* Editor + vista previa (09/10/2026). La vista previa solo existe para las páginas
+            listadas en PREVIEWS; en pantallas grandes va a la derecha (fija al scrollear),
+            en el resto arriba de los campos. */}
+        <div className="flex flex-col xl:flex-row xl:items-start gap-6">
+        {!loading && PREVIEWS[page.key] && (() => {
+          const Preview = PREVIEWS[page.key];
+          return <Preview content={pageValues} allValues={values} />;
+        })()}
+        <div className="flex-1 min-w-0 w-full bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
           <div className="p-6 md:p-8 space-y-6">
             {loading ? (
               <p className="font-label-md text-label-md text-on-surface-variant py-8 text-center">
                 Cargando contenido...
               </p>
             ) : (
-              page.fields.map((field) => (
+              page.fields.map((field) => {
+                // Campos condicionales (09/10/2026): p. ej. el segundo color del degradé
+                // solo se muestra cuando el estilo elegido es "degradé".
+                if (field.showIf && !field.showIf(pageValues)) return null;
+
+                // Separador con título (no guarda nada).
+                if (field.type === 'section') {
+                  return (
+                    <div key={field.key} className="pt-4 border-t border-outline-variant">
+                      <h3 className="font-headline-sm text-headline-sm text-primary">{field.label}</h3>
+                      {field.help && <p className="mt-1 text-sm text-on-surface-variant">{field.help}</p>}
+                    </div>
+                  );
+                }
+
+                return (
                 <div key={field.key} className="space-y-2">
                   <label className="block font-label-md text-label-md text-primary">{field.label}</label>
+
+                  {field.type === 'select' && (
+                    <select
+                      value={pageValues[field.key] ?? field.default ?? ''}
+                      onChange={(e) => setField(field.key, e.target.value)}
+                      className="w-full sm:max-w-md border border-outline-variant rounded-lg p-3 font-body-md text-body-md text-on-surface bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                    >
+                      {field.options.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {field.type === 'color' && (
+                    <ColorField value={pageValues[field.key]} onChange={(v) => setField(field.key, v)} />
+                  )}
 
                   {field.type === 'text' && (
                     <input
@@ -376,7 +500,8 @@ export default function AdminContent() {
                     </div>
                   )}
                 </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -402,6 +527,7 @@ export default function AdminContent() {
               </button>
             </div>
           </div>
+        </div>
         </div>
       </section>
     </div>

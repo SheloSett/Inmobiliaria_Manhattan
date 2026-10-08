@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { NETWORKS } from '../components/PublicFooter';
 import Seo from '../components/Seo';
+import { resolveLinksTheme } from '../utils/linksTheme';
 
 // Página de links estilo Linktree (08/10/2026) — ruta pública /links.
 // Pensada para el link de la bio de Instagram/TikTok: reemplaza al Linktree externo del
@@ -14,6 +15,17 @@ import Seo from '../components/Seo';
 // A propósito NO usa PublicNavbar/PublicFooter: es una página "link in bio", que se abre
 // desde el celular adentro del navegador de Instagram, y el formato es justamente una
 // sola columna con los botones y nada más. El botón de la casita lleva al sitio.
+//
+// Colores (09/10/2026): el fondo y los botones ya no están fijos en clases de Tailwind;
+// salen de resolveLinksTheme (utils/linksTheme.js) según lo que el cliente eligió en el
+// panel. El color del texto se calcula solo para contrastar con el fondo elegido. Los
+// colores del texto van en variables CSS (--lk-*) en el contenedor raíz, así las clases
+// de Tailwind (incluidas las de hover) pueden usarlos con `var(...)`.
+//
+// El componente se divide en dos: LinksPageView (solo pinta, recibe el contenido por
+// props) y LinksPage (la ruta: lee el contenido guardado). La vista previa del editor
+// usa LinksPageView con los valores aún sin guardar, así el cliente ve el resultado
+// antes de guardar.
 
 const SITE_URL = 'https://manhattannegociosinmobiliarios.com.ar';
 
@@ -70,12 +82,17 @@ function linkProps(href) {
   return external ? { target: '_blank', rel: 'noopener noreferrer' } : {};
 }
 
-export default function LinksPage() {
-  const content = useSiteContent('links');
-  // El logo del navbar/footer es el fallback del avatar y de las tarjetas destacadas.
-  const footer = useSiteContent('footer');
-  const avatar = content.avatar || footer.logo || '/favicon.png';
+// Clases comunes a todos los botones. El color de fondo/borde va por `style` (lo decide
+// el tema); el hover es un leve brillo + escala, que funciona con cualquier color.
+const BUTTON_BASE = 'border shadow-lg hover:brightness-110 hover:scale-[1.015] transition-all text-[var(--lk-btn-text)]';
+
+// Vista de la página. `content` son los campos de la página "links" del CMS;
+// `logoFallback` es el logo del Footer (se usa si no cargaron foto de perfil);
+// `preview` la adapta para mostrarla adentro del editor (sin <Seo>, sin alto de pantalla).
+export function LinksPageView({ content, logoFallback, preview = false }) {
+  const avatar = content.avatar || logoFallback || '/favicon.png';
   const name = content.name || 'Inmobiliaria Manhattan';
+  const theme = resolveLinksTheme(content);
 
   const icons = (content.icons || [])
     .map((i) => ({ ...i, href: normalizeUrl(i.url, i.network) }))
@@ -102,28 +119,41 @@ export default function LinksPage() {
     }
   };
 
+  // A pantalla completa ocupa al menos el alto de la ventana; en la vista previa del
+  // editor crece para llenar el marco (flex-1 dentro de una columna flex).
+  const height = preview ? 'flex-1' : 'min-h-screen';
+
   return (
-    <div className="relative min-h-screen bg-primary overflow-hidden font-body-md">
-      <Seo
-        title={`${name} — Links`}
-        description={content.seoDescription}
-        image={/^https?:/i.test(avatar) ? avatar : undefined}
-        path="/links"
-      />
+    <div
+      className={`relative ${height} flex flex-col overflow-hidden font-body-md text-[var(--lk-text)]`}
+      style={{ ...theme.page.style, ...theme.page.vars }}
+    >
+      {!preview && (
+        <Seo
+          title={`${name} — Links`}
+          description={content.seoDescription}
+          image={/^https?:/i.test(avatar) ? avatar : undefined}
+          path="/links"
+        />
+      )}
 
-      {/* Fondo: degradé navy con un brillo rojo de la marca, en lugar del fondo borroso de Linktree */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-primary-container blur-3xl opacity-90" />
-        <div className="absolute top-40 left-1/2 -translate-x-1/2 w-[420px] h-[420px] rounded-full bg-secondary/25 blur-3xl" />
-      </div>
+      {/* Fondo "Manhattan": degradé navy con un brillo rojo de la marca, en lugar del fondo
+          borroso de Linktree. Solo con el estilo de fondo original; con un color liso o un
+          degradé elegidos por el cliente no se dibuja. */}
+      {theme.page.brandGlow && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-primary-container blur-3xl opacity-90" />
+          <div className="absolute top-40 left-1/2 -translate-x-1/2 w-[420px] h-[420px] rounded-full bg-secondary/25 blur-3xl" />
+        </div>
+      )}
 
-      <main className="relative mx-auto w-full max-w-[580px] min-h-screen px-4 pt-5 pb-8 flex flex-col">
+      <main className="relative mx-auto w-full max-w-[580px] flex-1 px-4 pt-5 pb-8 flex flex-col">
         {/* Barra superior: al sitio (izquierda) y compartir (derecha) */}
         <div className="flex items-center justify-between">
           <Link
             to="/"
             aria-label="Ir al sitio web"
-            className="w-10 h-10 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="w-10 h-10 rounded-full bg-[var(--lk-text-10)] border border-[var(--lk-text-10)] flex items-center justify-center hover:bg-[var(--lk-text-20)] transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">home</span>
           </Link>
@@ -131,7 +161,7 @@ export default function LinksPage() {
             type="button"
             onClick={handleShare}
             aria-label="Compartir esta página"
-            className="w-10 h-10 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="w-10 h-10 rounded-full bg-[var(--lk-text-10)] border border-[var(--lk-text-10)] flex items-center justify-center hover:bg-[var(--lk-text-20)] transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">ios_share</span>
           </button>
@@ -139,12 +169,12 @@ export default function LinksPage() {
 
         {/* Perfil */}
         <header className="mt-6 flex flex-col items-center text-center">
-          <div className="w-24 h-24 rounded-full bg-white overflow-hidden shadow-xl ring-4 ring-white/10 flex items-center justify-center">
+          <div className="w-24 h-24 rounded-full bg-white overflow-hidden shadow-xl ring-4 ring-[var(--lk-text-10)] flex items-center justify-center">
             <img src={avatar} alt={name} className="w-full h-full object-contain p-2" />
           </div>
-          <h1 className="mt-4 font-headline-sm text-[22px] leading-7 font-bold text-white">{name}</h1>
+          <h1 className="mt-4 font-headline-sm text-[22px] leading-7 font-bold">{name}</h1>
           {content.bio && (
-            <p className="mt-1.5 max-w-sm text-sm text-white/70 whitespace-pre-line">{content.bio}</p>
+            <p className="mt-1.5 max-w-sm text-sm text-[var(--lk-text-70)] whitespace-pre-line">{content.bio}</p>
           )}
           {icons.length > 0 && (
             <nav aria-label="Redes sociales" className="mt-4 flex flex-wrap items-center justify-center gap-5">
@@ -154,7 +184,7 @@ export default function LinksPage() {
                   href={icon.href}
                   {...linkProps(icon.href)}
                   aria-label={NETWORKS[icon.network]?.label || icon.network}
-                  className="text-white hover:text-white/70 transition-colors text-[17px]"
+                  className="hover:opacity-70 transition-opacity text-[17px]"
                 >
                   <NetworkIcon network={icon.network} className="w-7 h-7" />
                 </a>
@@ -171,7 +201,8 @@ export default function LinksPage() {
                 key={i}
                 href={btn.href}
                 {...linkProps(btn.href)}
-                className="block rounded-2xl bg-black/35 border border-white/10 p-3 shadow-lg hover:bg-black/50 hover:scale-[1.015] transition-all"
+                className={`block rounded-2xl p-3 ${BUTTON_BASE}`}
+                style={theme.button.style}
               >
                 <div className="aspect-[16/9] w-full rounded-xl overflow-hidden bg-white">
                   {btn.image ? (
@@ -180,34 +211,46 @@ export default function LinksPage() {
                     <img src={avatar} alt={btn.title} className="w-full h-full object-contain p-8" loading="lazy" />
                   )}
                 </div>
-                <p className="pt-3 pb-1 text-center font-label-md text-[15px] font-bold text-white">{btn.title}</p>
+                <p className="pt-3 pb-1 text-center font-label-md text-[15px] font-bold">{btn.title}</p>
               </a>
             ) : (
               <a
                 key={i}
                 href={btn.href}
                 {...linkProps(btn.href)}
-                className="relative flex items-center min-h-[60px] rounded-2xl bg-black/35 border border-white/10 px-16 py-2 shadow-lg hover:bg-black/50 hover:scale-[1.015] transition-all"
+                className={`relative flex items-center min-h-[60px] rounded-2xl px-16 py-2 ${BUTTON_BASE}`}
+                style={theme.button.style}
               >
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center bg-white text-primary text-[15px]">
+                <span
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center text-[15px]"
+                  style={theme.button.tile}
+                >
                   {btn.image ? (
                     <img src={btn.image} alt="" className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <NetworkIcon network={btn.network} className="w-6 h-6" />
                   )}
                 </span>
-                <span className="w-full text-center font-label-md text-[15px] font-bold leading-5 text-white">{btn.title}</span>
+                <span className="w-full text-center font-label-md text-[15px] font-bold leading-5">{btn.title}</span>
               </a>
             )
           )}
         </section>
 
         <footer className="mt-auto pt-12 text-center">
-          <Link to="/" className="text-xs text-white/50 hover:text-white/80 transition-colors">
+          <Link to="/" className="text-xs text-[var(--lk-text-50)] hover:text-[var(--lk-text)] transition-colors">
             Manhattan Negocios Inmobiliarios
           </Link>
         </footer>
       </main>
     </div>
   );
+}
+
+// La ruta /links: lee el contenido guardado y lo pinta.
+export default function LinksPage() {
+  const content = useSiteContent('links');
+  // El logo del navbar/footer es el fallback del avatar y de las tarjetas destacadas.
+  const footer = useSiteContent('footer');
+  return <LinksPageView content={content} logoFallback={footer.logo} />;
 }
