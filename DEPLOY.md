@@ -5,6 +5,14 @@ frontend (nginx). El nginx del frontend sirve la web y hace proxy de `/api/` y
 `/uploads/` al backend por la red interna de Docker, así que **el único puerto
 que se expone a internet es el del frontend** (8080 en este VPS, ver sección 0).
 
+> ⚠️ **Actualización (08/10/2026): la web se migró al VPS nuevo `82.25.74.242`.**
+> Allá los puertos 80/443 los atiende un **Caddy compartido en Docker** (no el nginx del
+> sistema), el proyecto vive en `/srv/inmobiliaria-manhattan` y el frontend escucha en el
+> 8081. Todo eso está en la **sección 8**. Las secciones 0 a 7 describen el VPS viejo
+> (`177.7.59.16`) y se dejan como historial: siguen sirviendo para entender por qué la
+> configuración es como es (límites de subida, CORS, `FRONTEND_BIND`, Cloudflare), pero
+> sus rutas, puertos y pasos de nginx/certbot **no aplican** al VPS nuevo.
+
 ---
 
 ## 0. Estado de este VPS en particular (ya verificado)
@@ -361,11 +369,19 @@ estuviera abierto.
 Cada vez que hagas cambios y los pushees:
 
 ```bash
-ssh usuario@IP_DEL_VPS
-cd /opt/inmobiliaria-manhattan
+# ssh usuario@IP_DEL_VPS
+# cd /opt/inmobiliaria-manhattan
+# ↑ Comentadas (08/10/2026): eran el usuario/IP genéricos y la ruta del VPS viejo
+#   (177.7.59.16). Desde la migración el proyecto vive en el VPS nuevo, en /srv (ver sección 8).
+ssh shelo@82.25.74.242
+cd /srv/inmobiliaria-manhattan
 git pull
 docker compose up -d --build
 ```
+
+> En el VPS nuevo `docker compose` toma solo el `docker-compose.override.yml` que está en esa
+> carpeta (no está en git, ver 8.2): es el que une el frontend a la red de Caddy. No hace
+> falta pasarlo con `-f`.
 
 ### Actualización del 10/09/2026 (compresión de videos con ffmpeg)
 
@@ -378,6 +394,10 @@ sudo sed -i 's/client_max_body_size 110M;/client_max_body_size 520M;/' /etc/ngin
 grep -n "client_max_body_size" /etc/nginx/sites-available/manhattan   # tiene que decir 520M (línea sin #)
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+> **VPS nuevo (08/10/2026):** este `sed` ya no aplica — allá no hay nginx del sistema. El
+> límite equivalente vive en el archivo de Caddy (`request_body { max_size 520MB }`, ver 8.3)
+> y ya quedó en 520MB desde la migración.
 
 Para confirmar que el backend nuevo tiene ffmpeg:
 
@@ -399,6 +419,12 @@ docker exec manhattan_db pg_dump -U manhattan manhattan_db > backup_$(date +%F).
 
 Y para las imágenes basta con copiar la carpeta `backend/uploads/`.
 
+> **Backup automático (VPS nuevo, desde 08/10/2026):** no hace falta correrlo a mano. Todas
+> las noches a las 3:30 (UTC) el cron del usuario `shelo` corre `~/scripts/backup-manhattan.sh`,
+> que guarda un `.sql.gz` en `~/backups/` (se quedan los últimos 7 días) y lo sube a Backblaze
+> B2 con rclone. Cómo verificarlo y cómo restaurar uno: sección **8.5**.
+> Ojo: `backend/uploads/` (los CVs de las postulaciones) **no** entra en ese backup, solo la base.
+
 ## Cuando tengas dominio (HTTPS)
 
 Apuntá un registro DNS tipo A del dominio a la IP del VPS y avisame: el camino
@@ -411,3 +437,203 @@ certificado SSL de Let's Encrypt automáticamente.
 > cierre del 8080). Se eligió certbot + nginx en vez de Caddy porque el nginx
 > del sistema ya está instalado y sirviendo IGWT: meter Caddy implicaría
 > disputarle los puertos 80/443 a un sitio que ya está en producción.
+
+---
+
+## 8. VPS nuevo (82.25.74.242) — migración del 07–08/10/2026
+
+La web se mudó del VPS viejo (`177.7.59.16`, `srv1745446`) al VPS nuevo de Hostinger
+(`82.25.74.242`, `srv1959386`: Ubuntu 24.04, 4 vCPU, 15 GB RAM, 193 GB disco), donde ya
+corrían otros proyectos en Docker. El corte fue el **08/10/2026 a las 00:34 UTC** (07/10
+21:34 hora argentina), sin pérdida de datos: las 14 tablas quedaron con conteos idénticos
+y la web estuvo unos 3 minutos sin poder guardar cambios.
+
+### 8.1 Cómo está armado el VPS nuevo
+
+A diferencia del viejo, **no hay nginx del sistema** (está instalado pero inactivo). Los
+puertos 80/443 los atiende un **Caddy compartido en Docker**:
+
+- Contenedor `proxy`, compose en `/srv/proxy/docker-compose.yml`.
+- Un archivo por app en `/srv/proxy/sites/*.caddy` (el `Caddyfile` los importa todos).
+- Cada app se une a la red Docker externa **`edge`** y Caddy le habla por nombre de contenedor.
+- Caddy saca y renueva solo los certificados de Let's Encrypt (no hay certbot).
+- Cada app tiene además un nombre de prueba `<app>.82-25-74-242.sslip.io`, que resuelve
+  solo a la IP del VPS y tiene certificado real sin depender del DNS. El de esta web es
+  **https://manhattan.82-25-74-242.sslip.io**.
+
+> Ese Caddy sirve **todos** los sitios del VPS (shiraf, shuk, cartelera, ohel-moed,
+> provincias, bazar…). Antes de recargarlo, validar siempre (ver 8.3): una config rota
+> tira abajo a todos, no solo a Manhattan.
+
+El proyecto vive en **`/srv/inmobiliaria-manhattan`**, como los demás de `/srv` (no en `~`).
+Mismo `docker-compose.yml` del repo y mismos nombres de contenedor (`manhattan_db`,
+`manhattan_backend`, `manhattan_frontend`). Diferencias de puertos contra el viejo (todos
+atados a `127.0.0.1`, solo sirven para debug desde el propio VPS):
+
+| Servicio | VPS viejo        | VPS nuevo        | Por qué                                         |
+|----------|------------------|------------------|-------------------------------------------------|
+| frontend | `127.0.0.1:8080` | `127.0.0.1:8081` | el 8080 ya lo usa `shiraf-evolution`            |
+| backend  | `127.0.0.1:4001` | `127.0.0.1:4001` | igual                                           |
+| db       | `127.0.0.1:5434` | `127.0.0.1:5434` | igual                                           |
+
+El `.env` de la raíz es **copia exacta del viejo** (mismo `POSTGRES_PASSWORD`, `JWT_SECRET`,
+Cloudinary y `CORS_ORIGIN`), salvo `FRONTEND_PORT=8081`. Mantener los mismos secretos fue a
+propósito: la contraseña tiene que coincidir con la de la base restaurada (ver el gotcha de
+`POSTGRES_PASSWORD` en la memoria del proyecto) y con el mismo `JWT_SECRET` las sesiones del
+panel siguieron valiendo.
+
+### 8.2 `docker-compose.override.yml` (solo en el VPS, no está en git)
+
+Vive en `/srv/inmobiliaria-manhattan/docker-compose.override.yml`. Compose lo aplica solo.
+**No commitearlo al repo**: en desarrollo local la red `edge` no existe y `docker compose up`
+fallaría.
+
+```yaml
+services:
+  frontend:
+    networks: [default, edge]
+networks:
+  edge:
+    external: true
+```
+
+Solo el frontend se une a `edge`. El backend y la base siguen únicamente en la red interna
+del proyecto; el nginx del frontend les hace proxy como siempre (`manhattan_backend:4000`).
+
+### 8.3 Archivo de Caddy: `/srv/proxy/sites/manhattan.caddy`
+
+Hay una copia de trabajo en `~/manhattan.caddy` (la carpeta `/srv/proxy/sites` es del usuario
+`jony`, por eso se copia con `sudo`). Contenido, sin los comentarios:
+
+```caddy
+(manhattan) {
+	encode gzip
+	request_body {
+		max_size 520MB
+	}
+	reverse_proxy manhattan_frontend:80 {
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+manhattan.82-25-74-242.sslip.io {
+	import manhattan
+}
+
+manhattannegociosinmobiliarios.com.ar {
+	tls {
+		on_demand
+	}
+	import manhattan
+}
+
+www.manhattannegociosinmobiliarios.com.ar {
+	tls {
+		on_demand
+	}
+	redir https://manhattannegociosinmobiliarios.com.ar{uri} permanent
+}
+```
+
+- `max_size 520MB`: el mismo límite que tenía el nginx del sistema en el VPS viejo (videos de
+  hasta 500 MB por archivo en multer). El proxy de afuera es el que manda: si este límite
+  queda más bajo que el del nginx del contenedor, los videos grandes mueren con 413 (el bug
+  del 03/09/2026).
+- No hace falta `proxy_read_timeout`: Caddy no corta por tiempo de respuesta por defecto
+  (el nginx viejo sí, a los 60s, y por eso necesitaba los 300s).
+- `on_demand`: Caddy saca el certificado del dominio real con la primera visita que llega
+  por ese nombre. Así quedó declarado antes del corte sin que reintentara contra el VPS viejo.
+- **El `www` ahora redirige** al dominio sin www (en el viejo servía el sitio duplicado). El
+  sitemap y las URLs canónicas usan el dominio sin www (`SITE_URL` en `seo.routes.js`).
+
+Para cambiarlo:
+
+```bash
+nano ~/manhattan.caddy
+sudo cp ~/manhattan.caddy /srv/proxy/sites/manhattan.caddy
+docker exec proxy caddy validate --config /etc/caddy/Caddyfile   # tiene que decir "Valid configuration"
+docker exec proxy caddy reload   --config /etc/caddy/Caddyfile
+```
+
+Certificados al 08/10/2026: Let's Encrypt, vencen el **05/01/2027** y Caddy los renueva solo.
+
+### 8.4 Cómo se hizo la migración (por si hay que repetirla)
+
+La regla era **cero pérdida de datos**, así que se hizo en dos tiempos:
+
+1. **Ensayo, sin tocar el viejo.** `pg_dump -Fc` en el viejo (es solo lectura), copia al
+   nuevo verificando el `sha256sum` en cada salto, clonado del **mismo commit** que corría el
+   viejo, `.env` copiado, `docker compose up -d db` **solo la base**, `pg_restore`, y recién
+   después `docker compose up -d --build`. Se comparan los conteos exactos de todas las
+   tablas contra el viejo y se prueba por el nombre sslip.io.
+   - Restaurar **antes** de que arranque el backend: el `CMD` del backend corre
+     `prisma migrate deploy` + seed. Con la base ya restaurada, las migraciones no tienen nada
+     pendiente y el seed no toca nada (solo crea el admin si no hay ninguno y usa `upsert`
+     con `update: {}`).
+   - Ojo con el primer arranque de Postgres: `pg_isready` responde antes de que exista la
+     base (el entrypoint levanta un server temporal para inicializar). Esperar a ver
+     `PostgreSQL init process complete` en `docker logs manhattan_db`.
+2. **Corte.**
+   1. Congelar el viejo: `docker compose stop backend`. Desde ahí no se puede escribir nada.
+   2. Dump final + `tar` de `backend/uploads`, conteos exactos, copia a la PC
+      (`inmobiliaria_manhattan/backups-migracion-2026-10-07/`, fuera del repo) y al nuevo.
+   3. En el nuevo: `DROP DATABASE` + `CREATE DATABASE` (la del ensayo), `pg_restore
+      --single-transaction --exit-on-error`, extraer uploads, comparar conteos con `diff`
+      contra los del viejo, arrancar el backend y volver a comparar después del seed.
+   4. En el viejo, el frontend se reemplazó por un **reenviador** (ver 8.6) para que quien
+      siguiera llegando por DNS cacheado escribiera en el nuevo y no en la base vieja.
+   5. DNS en Cloudflare: los A de `@` y `www` a `82.25.74.242`, **nube gris** (DNS only).
+      El TXT de `google-site-verification` no se toca nunca (Search Console). Verificar con
+      `dig +short @1.1.1.1 manhattannegociosinmobiliarios.com.ar`.
+
+### 8.5 Backup nocturno
+
+Copiado del VPS viejo sin cambios (el contenedor, la base y el remoto se llaman igual):
+
+- Script: `~/scripts/backup-manhattan.sh` (usuario `shelo`). Hace `pg_dump | gzip` a
+  `~/backups/manhattan_db_<fecha>.sql.gz`, verifica el gzip, lo sube con rclone a
+  `backblaze:igwtstore-backups` y borra los locales de más de 7 días.
+- Cron: `30 3 * * *` (UTC) en el crontab de `shelo`. Log en `~/backups/cron.log`.
+- rclone: instalado por apt (v1.60.1), config en `~/.config/rclone/rclone.conf` (copiada del
+  viejo; es la misma cuenta B2 que usa IGWT).
+
+Verificar que esté corriendo:
+
+```bash
+tail -5 ~/backups/cron.log
+rclone ls backblaze:igwtstore-backups | grep manhattan | tail -3
+```
+
+Restaurar un backup (pisa la base actual: hacer antes un dump de lo que haya):
+
+```bash
+cd /srv/inmobiliaria-manhattan
+docker compose stop backend
+docker exec manhattan_db psql -U manhattan -d postgres -c "DROP DATABASE manhattan_db" -c "CREATE DATABASE manhattan_db OWNER manhattan"
+gunzip -c ~/backups/manhattan_db_FECHA.sql.gz | docker exec -i manhattan_db psql -U manhattan -d manhattan_db -v ON_ERROR_STOP=1
+docker compose start backend
+```
+
+> Este backup es **solo de la base**. `backend/uploads/` (los CVs de las postulaciones, que
+> se guardan en disco y no en Cloudinary) no está incluido. Al 08/10/2026 no había ningún CV,
+> pero a medida que lleguen postulaciones conviene sumarlos al backup.
+
+### 8.6 Qué quedó en el VPS viejo (hasta darlo de baja)
+
+- `manhattan_backend` y `manhattan_frontend`: **detenidos**, no borrados.
+- `manhattan_db`: corriendo, con la base **congelada** al momento del corte (respaldo extra).
+- `manhattan_reenvio` (nginx:alpine, `--restart unless-stopped`) en `127.0.0.1:8080`, donde
+  apunta el nginx del sistema. Reenvía todo a `https://manhattan.82-25-74-242.sslip.io`
+  verificando el certificado. Config en `~/manhattan-reenvio/default.conf`. Sirve para los
+  visitantes que todavía tengan el DNS viejo cacheado.
+- La línea de cron del backup de Manhattan quedó **comentada** (copia del crontab anterior en
+  `~/crontab_antes_migracion_manhattan.bak`). La del backup de IGWT sigue igual.
+- El server block `/etc/nginx/sites-available/manhattan` y el certificado de certbot siguen
+  ahí. Certbot va a intentar renovarlo antes del 16/11/2026 y va a fallar (el dominio ya no
+  apunta a ese VPS): es solo un aviso en los logs, no afecta a IGWT.
+
+> ⚠️ **No borrar ese certificado** (`certbot delete`) sin antes sacar el server block de
+> `sites-enabled`: el bloque apunta a los archivos del certificado, `nginx -t` fallaría,
+> el próximo reload del nginx —que también sirve IGWT— no se aplicaría y un reinicio
+> directamente no levantaría. Lo más simple es
+> no tocar nada y que todo se vaya con el VPS viejo cuando se dé de baja.
