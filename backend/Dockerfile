@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 # RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 # ↑ Comentado (10/09/2026): se agrega ffmpeg, que usa videoCompress.service.js para
 #   comprimir los videos de propiedad antes de mandarlos a Cloudinary. Es el paquete de
