@@ -6,7 +6,7 @@ import api from '../services/api';
 import PublicNavbar from '../components/PublicNavbar';
 import { resolveCoords } from '../services/geocode';
 import { useCatalogs } from '../hooks/useCatalogs';
-import { propertyThumbnail } from '../utils/media';
+import { propertyThumbnail, optimizedImage } from '../utils/media';
 
 // Página de búsqueda con mapa — basada en Stitch_Templates/search_results_template.
 // Layout split: mapa a la izquierda (con un pin por propiedad) y lista de resultados
@@ -254,7 +254,9 @@ export default function SearchResults() {
               </div>
             ) : (
               properties.map((p) => {
-                const img = propertyThumbnail(p.images);
+                // const img = propertyThumbnail(p.images);
+                // ↑ Comentado (18/11/2026): foto original para una miniatura de lista.
+                const img = optimizedImage(propertyThumbnail(p.images), 600);
                 const isActive = activeId === p.id;
                 return (
                   <article

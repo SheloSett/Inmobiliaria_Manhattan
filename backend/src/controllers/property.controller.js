@@ -284,7 +284,21 @@ exports.getLive = async (req, res) => {
   }
 };
 
+// Mensaje para el panel cuando falla el guardado en la base (18/11/2026). Antes create()
+// y update() respondían solo `{ error }`, sin `message`, y el panel (que lee
+// `err.response.data.message`) caía al genérico "Error al guardar. Intente nuevamente.",
+// el mismo texto que sale cuando el backend se cae: no había forma de distinguir un caso
+// del otro mirando la pantalla. El código de Prisma (P2002, P1001...) va al final para que
+// el admin lo pueda pasar tal cual y se sepa qué buscar en los logs.
+function saveFailedMessage(err) {
+  const code = typeof err?.code === 'string' && /^P\d{4}$/.test(err.code) ? ` (código ${err.code})` : '';
+  return `No se pudo guardar la propiedad en la base de datos${code}. Probá de nuevo y, si se repite, avisale al desarrollador.`;
+}
+
 exports.create = async (req, res) => {
+  // true cuando las fotos/videos ya quedaron referenciados por filas de PropertyImage:
+  // a partir de ahí, si algo falla, NO hay que borrarlos de Cloudinary (la ficha los usa).
+  let mediaSaved = false;
   try {
     const {
       title, description, price, currency, operation, type, status,
@@ -351,6 +365,7 @@ exports.create = async (req, res) => {
           propertyId: property.id,
         })),
       });
+      mediaSaved = true;
     }
 
     const full = await prisma.property.findUnique({
@@ -360,11 +375,17 @@ exports.create = async (req, res) => {
     res.status(201).json(await withCatalogLabels(full));
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al crear propiedad' });
+    // res.status(500).json({ error: 'Error al crear propiedad' });
+    // ↑ Comentado (18/11/2026): sin `message` el panel mostraba el texto genérico, y las
+    //   fotos que multer ya había subido quedaban huérfanas en Cloudinary.
+    if (!mediaSaved) await discardUploads(req.files);
+    res.status(500).json({ error: 'Error al crear propiedad', message: saveFailedMessage(err) });
   }
 };
 
 exports.update = async (req, res) => {
+  // Igual que en create(): marca si la media nueva ya quedó referenciada en la base.
+  let mediaSaved = false;
   try {
     const id = Number(req.params.id);
     const {
@@ -465,6 +486,7 @@ exports.update = async (req, res) => {
           // isPrimary se recalcula abajo con recomputePrimary (según el orden final).
         })),
       });
+      mediaSaved = true;
     }
 
     // 4) Recalcular la portada según el orden final (primera foto = portada).
@@ -481,7 +503,10 @@ exports.update = async (req, res) => {
     res.json(await withCatalogLabels(property));
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al actualizar propiedad' });
+    // res.status(500).json({ error: 'Error al actualizar propiedad' });
+    // ↑ Comentado (18/11/2026): mismo motivo que en create().
+    if (!mediaSaved) await discardUploads(req.files);
+    res.status(500).json({ error: 'Error al actualizar propiedad', message: saveFailedMessage(err) });
   }
 };
 

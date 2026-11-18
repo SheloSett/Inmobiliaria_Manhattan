@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { optimizedImage } from '../utils/media';
 
 // Carrusel de imágenes para la ficha de propiedad. Reemplaza al grid "bento" que
 // amontonaba las fotos y se rompía con muchas imágenes. Muestra una foto a la vez,
@@ -55,10 +56,15 @@ export default function ImageCarousel({ images = [], alt = '', interval = 5000 }
             ) : (
               <>
                 {/* Fondo borroso (rellena el espacio sobrante sin barras vacías) */}
-                <img src={img.url} aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40" />
+                {/* <img src={img.url} aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40" /> */}
+                {/* ↑ Comentado (18/11/2026): el carrusel monta TODAS las fotos a la vez (se
+                    cruzan por opacidad), así que la ficha bajaba cada foto entera de entrada.
+                    Ahora cada <img> pide su tamaño: el fondo va desenfocado, con 400 px sobra. */}
+                <img src={optimizedImage(img.url, 400)} aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40" />
                 {/* Imagen completa, sin recortar */}
                 <img
-                  src={img.url}
+                  // src={img.url}
+                  src={optimizedImage(img.url, 1600)}
                   alt={`${alt}${count > 1 ? ` — foto ${i + 1}` : ''}`}
                   className="relative w-full h-full object-contain"
                 />
@@ -115,7 +121,9 @@ export default function ImageCarousel({ images = [], alt = '', interval = 5000 }
                   <span className="material-symbols-outlined absolute inset-0 m-auto w-5 h-5 flex items-center justify-center text-white text-[18px] drop-shadow">play_circle</span>
                 </>
               ) : (
-                <img src={img.url} alt="" className="w-full h-full object-cover" />
+                // <img src={img.url} alt="" className="w-full h-full object-cover" />
+                // ↑ Comentado (18/11/2026): miniatura de 80 px que bajaba la foto original.
+                <img src={optimizedImage(img.url, 200)} alt="" className="w-full h-full object-cover" />
               )}
             </button>
           ))}

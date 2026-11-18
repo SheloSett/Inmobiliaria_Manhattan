@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { propertyThumbnail } from '../utils/media';
+import { propertyThumbnail, optimizedImage } from '../utils/media';
 
 // Card de propiedad ÚNICA y compartida (28/07/2026). Antes había dos cards distintas
 // —una en Home.jsx (destacadas) y otra en Catalog.jsx— que habían divergido (una mostraba
@@ -35,7 +35,10 @@ export default function PropertyCard({ property }) {
   // poster del primero como imagen única, igual que antes.
   const photos = (property.images ?? []).filter((i) => i.type !== 'video' && i.url).map((i) => i.url);
   const fallback = propertyThumbnail(property.images);
-  const slides = photos.length ? photos : (fallback ? [fallback] : []);
+  // const slides = photos.length ? photos : (fallback ? [fallback] : []);
+  // ↑ Comentado (18/11/2026): bajaba cada foto en su tamaño original (hasta 3 MB por
+  //   portada) para mostrarla en una card de ~400 px. Ver optimizedImage en utils/media.js.
+  const slides = (photos.length ? photos : (fallback ? [fallback] : [])).map((src) => optimizedImage(src, 800));
   const [index, setIndex] = useState(0);
 
   // Posición REAL que se dibuja. Es `index` acotado al rango válido: si el array de

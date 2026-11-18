@@ -21,12 +21,28 @@ const FOLDER = 'manhattan/properties/videos';
 
 function uploadToCloudinary(filePath) {
   // upload_large sube en trozos de 6 MB (evita el tope de 100 MB por request de la API
-  // y es mas robusto ante cortes). Ojo con el orden de argumentos del SDK v1:
-  // (path, callback, options). NO devuelve promesa, por eso se envuelve a mano.
+  // y es mas robusto ante cortes). NO devuelve promesa, por eso se envuelve a mano.
+  // return new Promise((resolve, reject) => {
+  //   cloudinary.uploader.upload_large(
+  //     filePath,
+  //     (err, result) => (err ? reject(err) : resolve(result)),
+  //     { resource_type: 'video', folder: FOLDER, chunk_size: 6 * 1024 * 1024, timeout: 300000 }
+  //   );
+  // });
+  // ↑ Comentado (18/11/2026): BUG que tiraba abajo el backend con cada video. Pasaba los
+  //   argumentos en el orden del SDK v1 (path, callback, options), pero config/cloudinary.js
+  //   exporta `require('cloudinary').v2`, cuya firma es (path, OPTIONS, CALLBACK). El
+  //   adaptador v2 del SDK tomaba la funcion como `options` y el objeto como `callback`, y al
+  //   terminar la subida hacia `callback(undefined, result)` sobre el objeto:
+  //   "TypeError: callback is not a function" (cloudinary/lib/utils/index.js), lanzado
+  //   dentro de un evento del stream -> excepcion no capturada -> se cae el proceso ->
+  //   nginx responde 502 -> el panel muestra "Error al guardar". Ademas las opciones nunca
+  //   se aplicaban: el video se subia como `raw`, sin carpeta. Visto en produccion el
+  //   18/11/2026 con el primer video real (la prueba local mockeaba Cloudinary con el mismo
+  //   orden equivocado, por eso no salto).
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_large(
       filePath,
-      (err, result) => (err ? reject(err) : resolve(result)),
       {
         resource_type: 'video',
         folder: FOLDER,
@@ -35,7 +51,8 @@ function uploadToCloudinary(filePath) {
         // transcodifica de forma sincronica antes de responder (ver upload.middleware.js).
         // Como el archivo ya llega chico y en H.264, en la practica tarda segundos.
         timeout: 300000,
-      }
+      },
+      (err, result) => (err ? reject(err) : resolve(result))
     );
   });
 }

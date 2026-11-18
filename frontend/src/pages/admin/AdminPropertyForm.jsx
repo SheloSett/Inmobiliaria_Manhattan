@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useCatalogs } from '../../hooks/useCatalogs';
 import LocationPicker from '../../components/LocationPicker';
+import { optimizedImage } from '../../utils/media';
 
 // Página de creación / edición de propiedad — rediseño basado en el template
 // Stitch_Templates/admin_create_Properties (15/07/2026). Reemplaza al modal
@@ -143,6 +144,10 @@ export default function AdminPropertyForm() {
   // Índices para el drag & drop de reordenamiento de la media existente.
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
+  // Lo mismo para los archivos NUEVOS (todavía sin subir). Refs aparte para que un
+  // arrastre en una grilla no mueva nada en la otra.
+  const dragNewItem = useRef(null);
+  const dragNewOverItem = useRef(null);
 
   // En modo edición se carga la propiedad y se precarga el formulario
   useEffect(() => {
@@ -286,6 +291,34 @@ export default function AdminPropertyForm() {
     });
   };
 
+  // Reordenar los archivos NUEVOS (18/11/2026). Antes solo se podía reordenar la media ya
+  // guardada (modo edición): al publicar una propiedad nueva, la grilla de fotos elegidas
+  // solo tenía la ×, así que el orden —y con él la PORTADA, que el backend toma de la
+  // primera foto que se manda— quedaba fijado por el orden en que se eligieron los
+  // archivos. El cliente intentaba arrastrarlas y no pasaba nada.
+  // newImages (los File) y previews (sus blob: URLs) son listas paralelas: se mueven
+  // juntas para que cada miniatura siga correspondiendo a su archivo.
+  const moveNewFile = (from, to) => {
+    if (from === to || to < 0 || to >= newImages.length) return;
+    const move = (arr) => {
+      const next = [...arr];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    };
+    setNewImages(move);
+    setPreviews(move);
+  };
+
+  const handleNewReorderDrop = () => {
+    const from = dragNewItem.current;
+    const to = dragNewOverItem.current;
+    dragNewItem.current = null;
+    dragNewOverItem.current = null;
+    if (from === null || to === null) return;
+    moveNewFile(from, to);
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
@@ -359,8 +392,16 @@ export default function AdminPropertyForm() {
         msg = `El servidor rechazo la subida por tamano. Los archivos suman ${fmtMB(totalBytes)}; proba subiendo menos archivos a la vez.`;
       } else if (!msg && !err.response) {
         msg = 'Se corto la conexion durante la subida. Revisa tu internet y proba de nuevo.';
+      } else if (!msg && status >= 502 && status <= 504) {
+        // 502/503/504 los arma el proxy (nginx/Caddy), no Node: el backend se cayó, se
+        // estaba reiniciando o tardó demasiado. Así fallaba la subida de videos hasta el
+        // 18/11/2026 y en pantalla salía el mismo genérico que cualquier otro error. Con un
+        // 504 el backend puede haber terminado de guardar igual, de ahí el aviso.
+        msg = `El servidor no respondio (error ${status}). Antes de reintentar, fijate en el listado si la propiedad se guardo igual; si se repite, avisale al desarrollador.`;
       }
-      setError(msg || 'Error al guardar. Intente nuevamente.');
+      // setError(msg || 'Error al guardar. Intente nuevamente.');
+      // ↑ Comentado (18/11/2026): se suma el codigo HTTP para poder rastrear el caso.
+      setError(msg || `Error al guardar${status ? ` (codigo ${status})` : ''}. Intente nuevamente.`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
@@ -583,6 +624,9 @@ export default function AdminPropertyForm() {
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
 
             {/* Previews de media nueva (fotos o videos), con botón para quitarlas antes de subir */}
+            {/* GRILLA ORIGINAL COMENTADA (18/11/2026, regla del proyecto de no borrar): solo
+                tenía la × para quitar; no se podía cambiar el orden ni elegir la portada.
+                Reemplazada por la grilla reordenable que sigue a este bloque.
             {previews.length > 0 && (
               <div className="mt-4 grid grid-cols-3 md:grid-cols-6 gap-3">
                 {previews.map((src, i) => {
@@ -610,6 +654,103 @@ export default function AdminPropertyForm() {
                 })}
               </div>
             )}
+            */}
+            {previews.length > 0 && (() => {
+              // Portada: al CREAR, el backend marca como portada el primer archivo que no
+              // sea video, en el orden en que se mandan (este). Al EDITAR, los nuevos se
+              // agregan DESPUÉS de la media actual, así que uno nuevo solo es portada si no
+              // queda ninguna foto actual.
+              const hasExistingPhoto = isEdit && existingMedia.some(m => m.type !== 'video' && !deletedIds.includes(m.id));
+              const newCoverIdx = hasExistingPhoto ? -1 : newImages.findIndex(f => !f.type.startsWith('video/'));
+              return (
+                <div className="mt-4">
+                  {previews.length > 1 && (
+                    <p className="font-label-sm text-label-sm text-on-surface-variant mb-2 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[16px]">drag_indicator</span>
+                      {isEdit
+                        ? 'Archivos nuevos (se agregan después de los actuales) — usá las flechas ‹ › (o arrastrá) para reordenarlos'
+                        : 'Usá las flechas ‹ › (o arrastrá) para reordenar; la primera foto es la portada'}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    {previews.map((src, i) => {
+                      const isVideo = newImages[i]?.type?.startsWith('video/');
+                      const isCover = i === newCoverIdx;
+                      return (
+                        <div
+                          // key = la blob: URL (única por archivo). Con key={i}, al mover un
+                          // archivo React reusaría los nodos por posición.
+                          key={src}
+                          draggable
+                          onDragStart={(e) => {
+                            dragNewItem.current = i;
+                            dragNewOverItem.current = i;
+                            e.dataTransfer.effectAllowed = 'move';
+                            // Firefox no arranca el arrastre si no hay datos cargados.
+                            e.dataTransfer.setData('text/plain', '');
+                          }}
+                          onDragEnter={() => { dragNewOverItem.current = i; }}
+                          onDragEnd={handleNewReorderDrop}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => e.preventDefault()}
+                          className={`aspect-square rounded-lg overflow-hidden border border-outline-variant relative group bg-surface-container cursor-move ${isCover ? 'ring-2 ring-primary' : ''}`}
+                        >
+                          {/* pointer-events-none: que el arrastre lo tome la tarjeta y no
+                              el arrastre nativo de la imagen (que llevaría la blob: URL). */}
+                          {isVideo ? (
+                            <video src={src} className="w-full h-full object-cover pointer-events-none" muted />
+                          ) : (
+                            <img src={src} alt={`Preview ${i + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                          )}
+                          {isVideo && (
+                            <span className="material-symbols-outlined absolute inset-0 m-auto w-8 h-8 flex items-center justify-center text-white drop-shadow pointer-events-none">play_circle</span>
+                          )}
+                          {isCover && (
+                            <span className="absolute top-1 left-1 bg-primary text-on-primary text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide pointer-events-none">
+                              Portada
+                            </span>
+                          )}
+                          {/* Flechas: alternativa al arrastre que también anda en el
+                              celular (ahí el drag & drop HTML5 no funciona). */}
+                          {previews.length > 1 && (
+                            <div className="absolute bottom-1 left-1 right-1 flex justify-between pointer-events-none">
+                              <button
+                                type="button"
+                                onClick={() => moveNewFile(i, i - 1)}
+                                disabled={i === 0}
+                                title="Mover antes"
+                                aria-label="Mover antes"
+                                className="pointer-events-auto w-7 h-7 rounded-full bg-surface/90 text-primary shadow flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveNewFile(i, i + 1)}
+                                disabled={i === previews.length - 1}
+                                title="Mover después"
+                                aria-label="Mover después"
+                                className="pointer-events-auto w-7 h-7 rounded-full bg-surface/90 text-primary shadow flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeNewImage(i)}
+                            title="Quitar"
+                            className="absolute top-1 right-1 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs font-bold shadow bg-secondary opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Media actual en modo edición (fotos y videos). Se pueden reordenar
                 ARRASTRANDO (drag & drop) y marcar para eliminar. La primera foto según
@@ -649,7 +790,9 @@ export default function AdminPropertyForm() {
                               <span className="material-symbols-outlined absolute inset-0 m-auto w-8 h-8 flex items-center justify-center text-white drop-shadow pointer-events-none">play_circle</span>
                             </>
                           ) : (
-                            <img src={img.url} alt="Media actual" className="w-full h-full object-cover pointer-events-none" />
+                            // <img src={img.url} alt="Media actual" className="w-full h-full object-cover pointer-events-none" />
+                            // ↑ Comentado (18/11/2026): miniatura que bajaba la foto original.
+                            <img src={optimizedImage(img.url, 300)} alt="Media actual" className="w-full h-full object-cover pointer-events-none" />
                           )}
                           {/* Badge de portada en la primera foto (movido de abajo a arriba
                               para dejarle el borde inferior a las flechas de reordenar) */}

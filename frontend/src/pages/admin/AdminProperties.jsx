@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Edit2, Trash2, X, Upload, Pause, Play, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import { propertyThumbnail } from '../../utils/media';
+import { propertyThumbnail, optimizedImage } from '../../utils/media';
 
 // --- Constantes del dominio ---
 const PROPERTY_TYPES = [
@@ -560,7 +560,10 @@ export default function AdminProperties() {
 
   const formatPrice  = (p) => `${p.currency || 'USD'} ${Number(p.price).toLocaleString('es-AR')}`;
   // Miniatura: foto principal → primera foto → primer frame del video (si solo hay videos).
-  const thumbnailSrc = (p) => propertyThumbnail(p.images);
+  // const thumbnailSrc = (p) => propertyThumbnail(p.images);
+  // ↑ Comentado (18/11/2026): la miniatura mide 64-80 px y se bajaba la foto original
+  //   (hasta 3 MB cada una), o sea, abrir el listado del panel eran decenas de MB.
+  const thumbnailSrc = (p) => optimizedImage(propertyThumbnail(p.images), 200);
 
   return (
     <div className="bg-background min-h-screen p-6 md:p-10">
